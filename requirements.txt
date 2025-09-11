@@ -1,0 +1,20 @@
+# --- Core ---
+fastapi
+uvicorn
+pydantic
+
+# --- Database ---
+pyodbc
+pymongo
+
+# --- LangChain + Gemini ---
+langchain
+langchain-google-genai
+google-generativeai
+
+# --- UI ---
+gradio
+requests
+
+# --- Utilities ---
+python-dotenv
