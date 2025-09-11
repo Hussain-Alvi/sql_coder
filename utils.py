@@ -21,3 +21,6 @@ def looks_like_sql(text: str) -> bool:
         if token in sql_keywords:
             return True
     return False
+
+
+############################
