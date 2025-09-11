@@ -2,7 +2,7 @@
 import os
 
 # ---------------- GEMINI CONFIG ----------------
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyBlF-xBXTLp0AlUxRc4nZlVVk6BGi8xG-c")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "Your Gemini API Key here.")
 
 # ---------------- MONGODB CONFIG ----------------
 MONGO_URI = "mongodb://localhost:27017/"
