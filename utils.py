@@ -1,12 +1,7 @@
 # utils.py
 import subprocess
 
-def check_cuda_support():
-    try:
-        subprocess.run(["nvidia-smi"], check=True, capture_output=True)
-        return True
-    except Exception:
-        return False
+
 
 
 def normalize_input(user_input: str) -> str:
