@@ -13,7 +13,7 @@ from db_ops import (
     history_collection
 )
 from llm_chains import generate_sql_query, generate_suggestions
-from utils import check_cuda_support, normalize_input, looks_like_sql
+from utils import normalize_input, looks_like_sql
 from memory_store import session_memories, get_or_create_memory
 
 # load initial schema context
@@ -40,18 +40,25 @@ def execute_sql_query(sql_query: str, user_input: str = ""):
         cursor = conn.cursor()
         cursor.execute(sql_query)
 
-        # Check if query produced a result set
-        if cursor.description is not None:
-            columns = [column[0] for column in cursor.description]
-            rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
-            cursor.close()
-            conn.close()
-            return {"status_code": 200, "columns": columns, "rows": rows}
-        else:
+        results = None
+
+        # Iterate through all possible result sets
+        while True:
+            if cursor.description is not None:  # Found a result set
+                columns = [column[0] for column in cursor.description]
+                rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                results = {"status_code": 200, "columns": columns, "rows": rows}
+                break  # Stop after first valid result set
+            if not cursor.nextset():
+                break  # No more result sets
+
+        if results is None:
             conn.commit()
-            cursor.close()
-            conn.close()
-            return {"status_code": 200, "message": "Query executed successfully."}
+            results = {"status_code": 200, "message": "Query executed successfully but Data not found.!"}
+
+        cursor.close()
+        conn.close()
+        return results
 
     except Exception as e:
         # The original file had duplicated exception blocks; reproduce behavior but prefer friendly messages:
@@ -84,9 +91,6 @@ def execute_sql_query(sql_query: str, user_input: str = ""):
 # ---------------- API ENDPOINT ----------------
 @app.post("/generate-sql")
 def generate_sql(request: QueryRequest):
-    if not check_cuda_support():
-        return {"status_code": 500, "error_message": "No CUDA GPU detected. Ensure you have a supported NVIDIA GPU."}
-
     normalized_input = normalize_input(request.user_input)
 
     if not normalized_input:
