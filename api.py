@@ -106,6 +106,10 @@ def generate_sql(request: QueryRequest):
     response = generate_sql_query(prompt, request.session_id)
     # If SQL generator expects schema text, we must ensure it has been loaded in memory_store's LLM runs
     # To maintain behavior, set DB_SCHEMA_CONTEXT variable from file if empty
+    
+    if isinstance(response, bytes):
+        response = response.decode("utf-8", errors="ignore")
+    
     if not DB_SCHEMA_CONTEXT or "Schema not found" in DB_SCHEMA_CONTEXT:
         DB_SCHEMA_CONTEXT = read_schema_from_file()
 
