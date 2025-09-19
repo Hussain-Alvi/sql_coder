@@ -1,0 +1,95 @@
+Concise Database Schema Report
+
+Table: dbo.Barcodes (5515 rows)
+Description: (no description)
+Columns (31): bar_pk, bar_prdfk, bar_barcode, bar_description, bar_pm, bar_default, bar_size, bar_pmprice, bar_priceembedded, bar_labelbatch, bar_lastsold, bar_rrp, bar_deflabel, bar_lastchange, bar_lastprice, bar_created, bar_deleted, bar_timestamp, bar_qty, bar_excludeProm, bar_longPLU, bar_shelfLife, bar_cigPLU, bar_lastPlofChange, bar_ESLEnable, Barcodes_Cloud_Changed_On, Barcodes_Cloud_Updated_On, Barcodes_MasterMergeRequired, Barcodes_TriggerSupress, Barcodes_MasterMergedOn, bar_web
+Primary key: bar_pk
+
+Table: dbo.BranchProducts (4016 rows)
+Description: Links Products to relevant Branches
+Columns (26): bxp_pk, bxp_brnfk, bxp_prdfk, bxp_applies, bxp_suspended, bxp_suspendfrom, bxp_suspendto, bxp_banfk, bxp_instock, bxp_onorder, bxp_minstk, bxp_maxstk, bxp_avgcost, bxp_facings, bxp_inactive, bxp_targetgp, bxp_avgsaleswks, bxp_timestamp, bxp_Prom, bxp_avgSales, bxp_stocked, BranchProducts_Cloud_Changed_On, BranchProducts_Cloud_Updated_On, BranchProducts_MasterMergeRequired, BranchProducts_TriggerSupress, BranchProducts_MasterMergedOn
+Primary key: bxp_pk
+Foreign keys: bxp_brnfk -> Branches.brn_pk, bxp_prdfk -> Products.prd_pk, bxp_banfk -> PriceBands.ban_pk
+
+Table: dbo.CostPrices_Current (15638 rows)
+Description: (no description)
+Columns (10): cstc_pk, cstc_cstfk, cstc_sprfk, cstc_price, cstc_effective, CostPrices_Current_Cloud_Changed_On, CostPrices_Current_Cloud_Updated_On, CostPrices_Current_MasterMergeRequired, CostPrices_Current_TriggerSupress, CostPrices_Current_MasterMergedOn
+Primary key: cstc_pk
+
+Table: dbo.CostpricesHistory (80232 rows)
+Description: (no description)
+Columns (23): csh_pk, csh_prdfk, csh_effective, csh_expired, csh_barcode, csh_sellprice, csh_supcode, csh_stkcode, csh_case, csh_price, csh_vatrate, csh_promotionevent, csh_promcd, csh_cashierno, csh_brnfk, csh_timestamp, csh_sprfk, csh_cstfk, CostpricesHistory_Cloud_Changed_On, CostpricesHistory_Cloud_Updated_On, CostpricesHistory_MasterMergeRequired, CostpricesHistory_TriggerSupress, CostpricesHistory_MasterMergedOn
+Primary key: csh_pk
+
+Table: dbo.Prices (11590 rows)
+Description: (no description)
+Columns (16): prc_pk, prc_barfk, prc_banfk, prc_price, prc_effective, prc_labelbatch, prc_released, prc_timestamp, prc_cashier, prc_preafk, prc_accepted, Prices_Cloud_Changed_On, Prices_Cloud_Updated_On, Prices_MasterMergeRequired, Prices_TriggerSupress, Prices_MasterMergedOn
+Primary key: prc_pk
+Foreign keys: prc_barfk -> Barcodes.bar_pk, prc_banfk -> PriceBands.ban_pk
+
+Table: dbo.Prices_Current (5515 rows)
+Description: (no description)
+Columns (13): prcc_pk, prcc_prcfk, prcc_barfk, prcc_banfk, prcc_price, prcc_effective, prcc_preafk, prcc_released, Prices_Current_Cloud_Changed_On, Prices_Current_Cloud_Updated_On, Prices_Current_MasterMergeRequired, Prices_Current_TriggerSupress, Prices_Current_MasterMergedOn
+Primary key: prcc_pk
+
+Table: dbo.Products (4016 rows)
+Description: (no description)
+Columns (64): prd_pk, prd_description, prd_size, prd_supfk, prd_dptfk, prd_subfk, prd_ssbfk, prd_vatfk, prd_seafk, prd_prgfk, prd_manfk, prd_owncode, prd_stocked, prd_stockedfrom, prd_stockedto, prd_weighed, prd_labelformat, prd_promlabelformat, prd_openitem, prd_labelbatch, prd_reportcode, prd_pricecheck, prd_scaleitem, prd_muststock, prd_corerange, prd_discountable, PRD_PLRFK, PRD_DIFF, prd_timestamp, prd_lookup, prd_eftfk, prd_downloadseparate, prd_CheckShortDate, prd_flag1, prd_flag2, prd_flag3, prd_flag4, prd_flag5, prd_flag6, prd_flag7, prd_flag8, prd_flag9, prd_flag10, prd_maxtranqty, prd_loyalty, prd_bonuspoints, prd_notes, prd_deliScaled, prd_pickingOrder, prd_deliDptNum, prd_created, prd_deleted, prd_manualVatRate, Products_Cloud_Changed_On, Products_Cloud_Updated_On, Products_MasterMergeRequired, Products_TriggerSupress, Products_MasterMergedOn, prd_quickItem, prd_diet, prd_CoA, prd_Class, Prd_Custom1, Prd_Custom2
+Primary key: prd_pk
+Foreign keys: prd_prgfk -> pricegroups.prg_pk, prd_seafk -> Seasons.sea_pk, prd_manfk -> Manufacturer.man_pk, prd_dptfk -> Departments.dpt_pk, prd_ssbfk -> SubSubDepartments.ssb_pk, prd_subfk -> SubDepartments.sub_pk
+
+Table: dbo.ProductSales (333809 rows)
+Description: (no description)
+Columns (18): psa_pk, psa_date, psa_brnfk, psa_prdfk, psa_dptfk, psa_barfk, psa_quantity, psa_value, psa_cost, psa_weekno, psa_timestamp, psa_vatrate, psa_asafk, ProductSales_Cloud_Changed_On, ProductSales_Cloud_Updated_On, ProductSales_MasterMergeRequired, ProductSales_TriggerSupress, ProductSales_MasterMergedOn
+Primary key: psa_pk
+Foreign keys: psa_brnfk -> Branches.brn_pk, psa_dptfk -> Departments.dpt_pk
+
+Table: dbo.PromotionCosts (9395 rows)
+Description: (no description)
+Columns (16): pcs_pk, pcs_pevfk, pcs_sprfk, pcs_price, pcs_effective, pcs_expires, pcs_promcd, pcs_timestamp, pcs_rebate, pcs_allocated, PromotionCosts_Cloud_Changed_On, PromotionCosts_Cloud_Updated_On, PromotionCosts_MasterMergeRequired, PromotionCosts_TriggerSupress, PromotionCosts_MasterMergedOn, pcs_ltycost
+Primary key: pcs_pk
+Foreign keys: pcs_pevfk -> PromotionEvents.pev_pk, pcs_sprfk -> SupplierProducts.spr_pk
+
+Table: dbo.PromotionPrices (9231 rows)
+Description: (no description)
+Columns (26): prm_pk, prm_prdfk, prm_pevfk, prm_schfk, prm_price, prm_effective, prm_expires, prm_promcd, prm_labelbatch, prm_released, prm_extendby, prm_extenddate, prm_timestamp, prm_comm, prm_unitssold, prm_solduntil, prm_maxtranqty, prm_effPrint, prm_expPrint, PromotionPrices_Cloud_Changed_On, PromotionPrices_Cloud_Updated_On, PromotionPrices_MasterMergeRequired, PromotionPrices_TriggerSupress, PromotionPrices_MasterMergedOn, prm_ltyprc, prm_web
+Primary key: prm_pk
+Foreign keys: prm_pevfk -> PromotionEvents.pev_pk, prm_prdfk -> Products.prd_pk, prm_schfk -> Schedules.sch_pk
+
+Table: dbo.PurchaseOrderlines (12384 rows)
+Description: (no description)
+Columns (32): orl_pk, orl_ordfk, orl_sprfk, orl_barfk, orl_qtyord, orl_qtydel, orl_price, orl_cost, orl_costdel, orl_freestk, orl_timestamp, ORL_EDIDEL, orl_scanned, orl_avgqty, orl_dayadj, orl_notes, orl_scannedQty, orl_bulkOrdered, orl_instock, orl_priceDel, orl_onOrder, orl_case, orl_prdfk, orl_grossCost, orl_suggested, orl_leaflet, orl_Discrepancy, PurchaseOrderlines_Cloud_Changed_On, PurchaseOrderlines_Cloud_Updated_On, PurchaseOrderlines_MasterMergeRequired, PurchaseOrderlines_TriggerSupress, PurchaseOrderlines_MasterMergedOn
+Primary key: orl_pk
+
+Table: dbo.PurchaseOrders (736 rows)
+Description: (no description)
+Columns (41): ord_pk, ord_number, ord_supfk, ord_date, ord_deliverydate, ord_status, ord_ref, ord_totallines, ord_totalcases, ord_totalcost, ord_totalsell, ord_presell, ord_preselldate, ord_notes1, ord_notes2, ord_notes3, ord_suppref, ord_picco, ord_edidata, ord_timestamp, ord_bookintype, ord_edi, ord_discrepancy, ord_CreatedByEdi, ord_invoice, ord_dispatch, ord_OrderName, ord_daily, ord_brnfk, ord_openOnPC, ord_transmittedDate, ord_surcharge, ord_sync, ord_communicated, ord_verified, ord_lastSync, PurchaseOrders_Cloud_Changed_On, PurchaseOrders_Cloud_Updated_On, PurchaseOrders_MasterMergeRequired, PurchaseOrders_TriggerSupress, PurchaseOrders_MasterMergedOn
+Primary key: ord_pk
+Foreign keys: ord_supfk -> Suppliers.sup_pk
+
+Table: dbo.StockTransactions (303510 rows)
+Description: (no description)
+Columns (23): stk_pk, stk_prdfk, stk_sprfk, stk_barfk, stk_brnfk, stk_date, stk_type, stk_quantity, stk_value, stk_costval, stk_reafk, stk_cshfk, stk_ordfk, stk_timestamp, stk_ref, STK_HOTRANS, stk_asafk, stk_adjHO, StockTransactions_Cloud_Changed_On, StockTransactions_Cloud_Updated_On, StockTransactions_MasterMergeRequired, StockTransactions_TriggerSupress, StockTransactions_MasterMergedOn
+Primary key: stk_pk
+Foreign keys: stk_reafk -> Reasons.rea_pk, stk_brnfk -> Branches.brn_pk
+
+Table: dbo.SupplierProducts (15638 rows)
+Description: (no description)
+Columns (25): spr_pk, spr_supfk, spr_prdfk, spr_stkcode, spr_description, spr_case, spr_main, spr_inactive, spr_labelbatch, spr_disfk, spr_prevcost, spr_lastchange, spr_outerbarcode, spr_deleted, spr_timestamp, spr_rebate, spr_splitstkcode, spr_parentcode, spr_notes, spr_packSize, SupplierProducts_Cloud_Changed_On, SupplierProducts_Cloud_Updated_On, SupplierProducts_MasterMergeRequired, SupplierProducts_TriggerSupress, SupplierProducts_MasterMergedOn
+Primary key: spr_pk
+Foreign keys: spr_supfk -> Suppliers.sup_pk
+
+Table: dbo.Suppliers (52 rows)
+Description: (no description)
+Columns (32): sup_pk, sup_code, sup_name, sup_address, sup_address2, sup_address3, sup_postcode, sup_telephone, sup_fax, sup_contact, sup_email, sup_mobile, sup_dasfk, sup_sequence, sup_timestamp, sup_ordersequece, sup_extractsalesdata, sup_news, sup_fuel, sup_processedi, sup_sort, sup_notes, sup_WebScan, sup_mainelectronicsup, sup_warehouse, sup_excludeFromWarehouse, sup_hPosUID, Suppliers_Cloud_Changed_On, Suppliers_Cloud_Updated_On, Suppliers_MasterMergeRequired, Suppliers_TriggerSupress, Suppliers_MasterMergedOn
+Primary key: sup_pk
+
+Table: dbo.TillTransactionDetails (1225542 rows)
+Description: (no description)
+Columns (27): trd_pk, trd_trhfk, trd_status, trd_itemStatus, trd_type, trd_subtype, trd_barfk, trd_dptfk, trd_quantity, trd_gross, trd_disc, trd_mmdisc, trd_net, trd_account, trd_line, trd_timestamp, trd_subsubtype, trd_registration, trd_vatRate, trd_mileage, TillTransactionDetails_Cloud_Changed_On, TillTransactionDetails_Cloud_Updated_On, TillTransactionDetails_MasterMergeRequired, TillTransactionDetails_TriggerSupress, TillTransactionDetails_MasterMergedOn, trd_npr_barcode, trd_MMTableNo
+Primary key: trd_pk
+
+Table: dbo.TillTransactionHeaders (274829 rows)
+Description: (no description)
+Columns (17): trh_pk, trh_date, trh_brnfk, trh_tilfk, trh_cshfk, trh_zread, trh_receipt, trh_actfk, trh_cusfk, trh_timestamp, trh_dayNumber, trh_manual, TillTransactionHeaders_Cloud_Changed_On, TillTransactionHeaders_Cloud_Updated_On, TillTransactionHeaders_MasterMergeRequired, TillTransactionHeaders_TriggerSupress, TillTransactionHeaders_MasterMergedOn
+Primary key: trh_pk
