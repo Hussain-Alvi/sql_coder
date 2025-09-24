@@ -1,0 +1,28 @@
+__pycache__
+.idea/
+*.pyc
+*.json
+*.dot
+.env
+.vscode
+.ipynb_checkpoints
+# Ignore dynaconf secret files
+.secrets.*
+# Ignore everything inside data by default
+data/**
+
+# Keep the prompts folder and its contents
+!data/files/prompts/
+!data/files/prompts/**
+
+# Keep the queries folder and its contents
+!data/files/queries/
+!data/files/queries/**
+
+# Allow .gitkeep everywhere
+!*/.gitkeep
+
+# Ignore logs content but allow .gitkeep
+logs/*
+!logs/.gitkeep
+

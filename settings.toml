@@ -1,0 +1,20 @@
+[default]
+LOGS_PATH = 'logs/logs.txt'
+VECTORS_DB_PATH = "data/chromadb_vectors"
+TEMP_INCOMING_AUDIO_PATH = "data/files/audios/temp_audios"
+TEMP_OUTGOING_AUDIO_PATH = "data/files/audios/temp_audios"
+CHAT_HISTORY_PATH = "data/files/chat_history"
+SPEECH_TO_TEXT_GOOGLE_API_CREDENTIALS = "data/files/credentials/speech-to-text-google-api-credentials.json"
+AUDIO_STREAM_SAMPLE_RATE_HERTZ = 16000
+SERVER_IP = "0.0.0.0"
+SERVER_PORT = 5011
+SERVER_FILES_IP = "http://localhost:5011"
+
+
+CLIENT_SQL_CSV_PATH = "data/files/queries/client_sql.csv"
+
+[production]
+#SERVER_IP = "0.0.0.0"
+#SERVER_PORT = 5011
+#SERVER_FILES_IP = "http://192.168.0.60/api"
+#SERVER_FILES_IP = "http://192.168.0.60:5011"
