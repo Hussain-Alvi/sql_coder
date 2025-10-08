@@ -3,235 +3,40 @@ Langchain agent of SQL Assistant.
 """
 import logging
 import os
+from chromadb import Metadata
 import pyodbc
-from pprint import pprint
 from dynaconf import Dynaconf
-from typing import List, Optional, Dict, Any
-from langchain.agents.format_scratchpad import format_to_tool_messages
+from typing import Optional, Dict, Any
+# from langchain.agents.format_scratchpad import format_to_tool_messages
 from langchain.agents.output_parsers.tools import ToolAgentAction, parse_ai_message_to_tool_action
 from langchain.pydantic_v1 import BaseModel, Field
-from langchain.tools import BaseTool, StructuredTool, tool
+from langchain.tools import tool
 
-from langchain.agents import AgentExecutor
-from langchain_core.agents import AgentFinish, AgentAction
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.output_parsers.openai_tools import PydanticToolsParser
+#from langchain.agents import AgentExecutor
+from langchain_core.agents import AgentFinish
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.agents.format_scratchpad.openai_tools import (format_to_openai_tool_messages)
 from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
 
 from data_models import MessagesList, Message, Sender
-from vector_database_manager import load_embedding_model, create_vector_db_collection, check_and_load_query_data, \
-    search_client_queries
+import toml
 
-TABLE_LIST = [
-    "Products",
-    "SupplierProducts",
-    "PurchaseOrderlines",
-    "PurchaseOrders",
-    "Suppliers",
-    "ProductSales",
-    "TillTransactionHeaders",
-    "TillTransactionDetails",
-    "Barcodes",
-    "PromotionPrices",
-    "PromotionCosts",
-    "Prices",
-    "CostpricesHistory",
-    "StockTransactions",
-    "Prices_Current",
-    "CostPrices_Current",
-    "BranchProducts"
-]
+with open("metadata.txt", "r", encoding="utf-8") as file:
+    metadata = file.read()
 
 
-def initialize_client_sql_queries_vector_database(settings: Dynaconf, logger: logging.getLogger):
-    """Load embedding model and initialize vector database."""
-    load_embedding_model(logger)
-    create_vector_db_collection(settings)
-    check_and_load_query_data(settings, logger)
 
 
-class SearchRelevantQueryInput(BaseModel):
-    search_query: str = Field(
-        description="Natural language query from the user for which we want to find similar past queries."
-    )
 
 
-@tool("search_relevant_queries", args_schema=SearchRelevantQueryInput, return_direct=False)
-def search_relevant_queries(search_query: str) -> str:
-    """
-    Search previously stored user queries to find relevant examples.
-    Returns both the matched natural language queries and their corresponding SQL queries.
-    Useful for guiding SQL generation by leveraging past successful queries.
-    """
-    pass
+secrets = toml.load(".secrets.toml")
+db_conf = secrets["database"]  # <-- section name
 
-
-def search_relevant_queries_imp(
-        settings: Dynaconf, logger: logging.Logger, search_query: str
-) -> str:
-    """
-    Search ChromaDB for relevant past user queries and return both user and SQL queries.
-    """
-    try:
-        # Assume you already have a helper for ChromaDB semantic search
-        # Something like: search_queries_in_chroma(settings, logger, query=search_query)
-        results = search_client_queries(settings, logger, query=search_query)
-
-        if not results or len(results) == 0:
-            return "No relevant past queries found."
-
-        # Format results for agent
-        formatted = []
-        formatted.append(
-            f"Found {len(results)} queries using vector search.\n"
-            "These examples may or may not match the current request. "
-            "If useful, reuse or adapt them. "
-            "If not relevant, ignore and generate a new SQL query.\n"
-        )
-
-        for r in results:
-            user_q = r.get("client_query", "N/A")
-            sql_q = r.get("sql_query", "N/A").replace("\n", " ").strip()
-            meta = r.get("meta", None)
-
-            block = f"User Query: {user_q}\nSQL Query: {sql_q}"
-            if meta:
-                block += f"\nMetadata: {meta}"
-            formatted.append(block)
-
-        return "\n\n".join(formatted)
-
-    except Exception as e:
-        logger.error(f"Error searching relevant queries: {e}")
-        return f"❌ Failed to search relevant queries. Error: {e}"
-
-
-class GetTableInfoInput(BaseModel):
-    table_names: List[str] = Field(
-        description="List of table names for which schema details (columns, data types, primary keys, foreign keys) are required."
-    )
-
-
-@tool("get_table_info", args_schema=GetTableInfoInput, return_direct=False)
-def get_table_info(table_names: List[str]) -> str:
-    """
-    Use this tool to retrieve schema details of one or more database tables.
-    The tool returns a CREATE TABLE DDL representation that includes columns,
-    data types, primary keys, and foreign key constraints.
-    """
-    pass
-
-
-def get_table_info_imp(
-        settings: Dynaconf, logger: logging.Logger, table_names: List[str]
-) -> str:
-    """
-    Retrieve schema details for given table(s) from SQL Server database.
-    Returns CREATE TABLE DDL statements for each requested table.
-    """
-
-    if not table_names or len(table_names) == 0:
-        return "❌ No table names provided."
-
-    try:
-        # Reuse your pyodbc connection string style
-        conn_str = (
-            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-            f"SERVER={settings.DB_SERVER};"
-            f"DATABASE={settings.DB_NAME};"
-            f"Trusted_Connection=yes;"
-            f"TrustServerCertificate=yes;"
-        )
-
-        cnxn = pyodbc.connect(conn_str, autocommit=False)
-        cursor = cnxn.cursor()
-
-        output = []
-
-        for table in table_names:
-            # Check if table exists
-            cursor.execute(
-                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ?", table
-            )
-            if cursor.fetchone()[0] == 0:
-                output.append(f"⚠️ Table '{table}' does not exist.")
-                continue
-
-            # Get columns
-            cursor.execute(
-                """
-                SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH
-                FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_NAME = ?
-                ORDER BY ORDINAL_POSITION
-                """,
-                table,
-            )
-            columns = cursor.fetchall()
-
-            # Get primary keys
-            cursor.execute(
-                """
-                SELECT k.COLUMN_NAME
-                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS t
-                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE k
-                ON t.CONSTRAINT_NAME = k.CONSTRAINT_NAME
-                WHERE t.TABLE_NAME = ? AND t.CONSTRAINT_TYPE = 'PRIMARY KEY'
-                """,
-                table,
-            )
-            pk_cols = [row[0] for row in cursor.fetchall()]
-
-            # Get foreign keys
-            cursor.execute(
-                """
-                SELECT 
-                    f.NAME AS FK_NAME,
-                    COL_NAME(fc.parent_object_id,fc.parent_column_id) AS COLUMN_NAME,
-                    OBJECT_NAME(f.referenced_object_id) AS REFERENCED_TABLE,
-                    COL_NAME(fc.referenced_object_id,fc.referenced_column_id) AS REFERENCED_COLUMN
-                FROM sys.foreign_keys AS f
-                INNER JOIN sys.foreign_key_columns AS fc 
-                    ON f.OBJECT_ID = fc.constraint_object_id
-                WHERE f.parent_object_id = OBJECT_ID(?)
-                """,
-                table,
-            )
-            fk_data = cursor.fetchall()
-
-            # Build CREATE TABLE string
-            ddl_lines = []
-            for col in columns:
-                col_name, data_type, is_nullable, char_len = col
-                type_str = (
-                    f"{data_type}({char_len})"
-                    if char_len and char_len > 0 and data_type in ["nvarchar", "varchar", "char"]
-                    else data_type
-                )
-                null_str = "NULL" if is_nullable == "YES" else "NOT NULL"
-                ddl_lines.append(f"    {col_name} {type_str} {null_str}")
-
-            if pk_cols:
-                ddl_lines.append(f"    PRIMARY KEY ({', '.join(pk_cols)})")
-
-            for fk in fk_data:
-                fk_name, col, ref_table, ref_col = fk
-                ddl_lines.append(
-                    f"    FOREIGN KEY ({col}) REFERENCES {ref_table}({ref_col})"
-                )
-
-            ddl = f"TABLE {table} (\n" + ",\n".join(ddl_lines) + "\n);"
-            output.append(ddl)
-
-        return "\n\n".join(output)
-
-    except Exception as e:
-        logger.error(f"Error fetching table info: {e}")
-        return f"❌ Failed to get schema info. Error: {e}"
-
+DB_SERVER = db_conf["DB_SERVER"]
+DB_NAME   = db_conf["DB_NAME"]
+USERNAME  = db_conf["USERNAME"]
+PASSWORD  = db_conf["PASSWORD"]
 
 class ExecuteSQLQueryInput(BaseModel):
     query: str = Field(description="The SQL query to be executed on the relational database.")
@@ -250,9 +55,7 @@ def execute_sql_query(query: str, limit: int = 5) -> str:
     pass
 
 
-def execute_sql_query_imp(
-        settings: Dynaconf, logger: logging.Logger, query: str, limit: int = 5
-) -> Dict[str, Any]:
+def execute_sql_query_imp(settings: Dynaconf, logger: logging.Logger, query: str, limit: int = 5) -> Dict[str, Any]:
     """
     Execute an SQL query and return structured results.
     - If query fails: return structured error.
@@ -263,13 +66,16 @@ def execute_sql_query_imp(
         limit = min(limit, 10)  # hard cap at 10 rows
         if query.startswith('"') and query.endswith('"'):
             query = query[1:-1]
+           
         conn_str = (
             f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-            f"SERVER={settings.DB_SERVER};"
-            f"DATABASE={settings.DB_NAME};"
-            f"Trusted_Connection=yes;"
-            f"TrustServerCertificate=yes;"
-        )
+            f"SERVER={DB_SERVER};"
+            f"DATABASE={DB_NAME};"
+            f"UID={USERNAME};"
+            f"PWD={PASSWORD};"
+)
+
+        #print(conn_str)
         cnxn = pyodbc.connect(conn_str, autocommit=False)
         cursor = cnxn.cursor()
 
@@ -329,122 +135,141 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, conversation: Messa
 
         model = "gpt-5"  # "gpt-4o" "gpt-3.5-turbo"  "gpt-4-0125-preview"
         llm = ChatOpenAI(model=model, temperature=1)  # temperature=1 for gpt-5, for others you can change
-        # llm = ChatGroq(temperature=0, model_name="llama-3.1-70b-versatile")  # llama3-70b-8192
-        # llm = ChatAnthropic(model='claude-3-5-sonnet-20240620', temperature=0, )
-
+        
         tools = [
-            search_relevant_queries,
-            get_table_info,
             execute_sql_query
         ]
 
         system_prompt = """
-You are a SQL-Chat Agent whose job is to convert user intents (natural language) into safe, correct SELECT queries against a relational database and return results. You have three tools available and may call them autonomously.
+You are a SQL-Chat Agent whose job is to convert user intents (natural language) into safe, correct SELECT queries against a relational database and return meaningful, concise answers.
+You have one tool available and may call it autonomously.
 
-AVAILABLE TOOLS (use these exact names & parameter names)
-1) get_table_info(table_names: List[str]) -> str
-   - Input: table_names (list of table names)
-   - Returns: a CREATE TABLE-like DDL text for each requested table containing column names, data types, NULL/NOT NULL, PRIMARY KEY(s), FOREIGN KEY(s). If a table doesn't exist it returns a clear warning for that table.
-   - Note: Supports multiple table_names in a single call.
-
-2) search_relevant_queries(search_query: str) -> list
-   - Input: search_query (the user's natural language query)
-   - Returns: a list of matches; each match is a structured item with fields: client_query (text), sql_query (the previously generated SQL), distance (similarity). If none found returns an empty list or a clear "no results" message.
-
-3) execute_sql_query(query: str, limit: int = 5) -> dict
-   - Input: query (SQL string), limit (int, default 5)
-   - Behavior: If resultset > limit, results are clipped to the first `limit` rows and `note` explains clipping. If no resultset (DDL/DML), returns success with rows_returned = 0. On SQL errors, returns status="error" and a concise message.
-
-CORE PRINCIPLES (how you should behave)
-- Autonomy: decide on tool calls yourself. The user will not tell you table names; you must infer which tables are relevant from the provided table list.
-- For simple generic queries (e.g., greetings like "hi", "hello", "how are you"), do not call any tools. Just respond politely and concisely in natural text.
-- Use search_relevant_queries FIRST when the user intent is similar to past queries. If a relevant match is found, consider reusing its sql_query — but **validate** it before executing.
-- Always validate: Before executing any SQL you did not synthesize yourself, confirm referenced table(s) exist in the AVAILABLE TABLE LIST and (if unsure about columns) call get_table_info to confirm column names and types.
-- Token efficiency: avoid calling get_table_info for every request — call it when you need column-level certainty (joins, aggregations, ambiguous column names).
-- Safety: Prefer SELECT queries only. Do not attempt to run destructive DDL/DML. If a user asks for updates/deletes, respond with a short refusal and offer a SELECT-based preview instead.
-- Error handling: If execute_sql_query returns status="error", parse the error message and attempt at most 2 automatic fixes: (1) re-check schema via get_table_info for referenced tables, (2) if fixable (typo, wrong column), regenerate SQL and retry. If still failing, return a concise structured error to the caller explaining what failed and why.
-
-TABLES (dynamic)
-- You will be provided a runtime variable `TABLE_LIST` (an exhaustive list of table names available in the DB).
-- Treat `TABLE_LIST` as authoritative: these are the only tables you may reference.
-- When deciding relevant tables, prefer tables whose names match user keywords (plural/singular variants allowed). If multiple tables may be relevant, pass all plausible table names to get_table_info in one call (e.g., table_names=["Orders","OrderItems"]).
-
-Below are the tables that are present in our Database.
-TABLE_LIST:
-{table_list}
-
-DECISION FLOW (step-by-step)
-1. Parse user intent and extract a short `search_query` (the user text).
-2. Call search_relevant_queries(search_query=search_query).
-   - If results non-empty and a top-match has clearly high relevance (you judge it as applicable), inspect its `sql_query`.
-     - Validate the `sql_query` against TABLE_LIST and use get_table_info for any tables referenced if you are unsure about column names.
-     - If valid, call execute_sql_query(query=sql_query, limit=CLIP_LIMIT) to run it.
-   - If no suitable match found, proceed to (3).
-3. Identify likely tables from TABLE_LIST. If column-level detail is required, call get_table_info(table_names=[...]) to get DDL and decide column names and joins.
-4. Synthesize a clear, minimal SELECT query that answers the user's intent. Avoid unnecessary columns and avoid ambiguous column references.
-5. Call execute_sql_query(query=your_query, limit=CLIP_LIMIT).
-6. If execute_sql_query returns error:
-   - Read the error message. If it indicates a column/table not found or simple typo, call get_table_info for that table and regenerate SQL (retry up to 2 times).
-   - Otherwise stop and return a concise structured error so the agent can ask the user for clarification.
-7. On success: produce a concise human-readable answer and include the structured result for downstream use.
+AVAILABLE TOOL
+1. execute_sql_query(query: str, limit: int = 5) -> dict
+    - Input:
+        - query — SQL string to execute.
+        - limit — integer (default 5), maximum number of rows to return.
+    - Behavior:
+        - If resultset > limit, results are clipped to the first limit rows and a note explains clipping.
+        - If the query produces no resultset (DDL/DML), returns success with rows_returned = 0.
+        - On SQL errors, returns status="error" and a concise message.
 
 
-OUTPUT FORMAT (how you should present results to the user)
-- Always return a **concise natural language text answer**.
-- If results are clipped (because of the `limit`), mention that clearly in the text (e.g., "Showing first 5 of 120 results").
-- Do not return JSON or structured output — only user-friendly text.
+DATABASE INFORMATION (for reasoning)
+
+You are provided a runtime variable called metadata, which contains a complete and accurate description of the database schema — including:
+    - table names,
+    - column names,
+    - data types,
+    - descriptions
+    - primary keys, foreign keys, and relationships,
+- Treat metadata as authoritative and complete.
+- Use this to infer which tables and columns exist, how they relate, and what information they contain.
+
+CORE PRINCIPLES
+
+1. Autonomy:
+    -Decide on tool calls yourself.
+    -The user will not tell you table names — infer them directly from metadata.
+    -For simple or conversational prompts (e.g., “hi”, “hello”, “who are you”), do not call any tools. Respond politely and naturally in text.
+2. SQL construction:
+    - Use the schema information inside metadata to:
+    - Identify the right tables and relationships.
+    - Select correct column names and types.
+    - Build safe, minimal, syntactically valid SELECT queries.
+3. Validation:
+    - Always verify that all table and column names you use appear inside metadata.
+    - If a name is missing, return a concise message asking the user to clarify or rephrase.
+4. Safety:
+    - Only generate SELECT queries.
+    - If the user requests updates, deletions, or schema changes, politely decline and offer to generate a SELECT-based preview instead.
+5. Error handling:
+    - If execute_sql_query returns status="error", analyze the message.
+    - Attempt up to two automatic fixes:
+    - Recheck metadata to confirm spelling, joins, and data types.
+    - If fixable (e.g., typo or alias confusion), regenerate and retry.
+    - If still failing, return a concise structured error explaining what failed and why.
+6. Token efficiency:
+    - Use your internal understanding of metadata instead of calling schema tools repeatedly.
+    - Refer to metadata text directly when confirming relationships or column availability.
+
+DECISION FLOW
+
+- Parse intent — Understand what the user is asking for.
+- Identify relevant tables and columns — Use the metadata variable to find logical matches (by name or meaning).
+- Design the SQL — Build a safe SELECT statement:
+     "Include only necessary columns."
+- Apply filters, joins, aggregations, and limits when appropriate.
+- Ensure syntax correctness.
+- Execute query — Call execute_sql_query(query, limit=CLIP_LIMIT) to fetch results.
+- If error occurs:
+    "Examine the returned error."
+- Regenerate query at most 2 times if fixable (typo, alias, missing join).
+- If unresolved, return a concise message with cause and suggestion.
+- Return result — Produce a short, natural-language explanation summarizing the result.
+
+
+OUTPUT FORMAT
+
+- Always respond in clear, user-friendly text — not JSON or raw data.
+- Summarize findings (e.g., “There are 12 pending orders for customer X.”).
+- If results are clipped, mention it explicitly:
+    “Showing first 5 of 80 results.”
 
 
 EXAMPLES (short flows)
 
-Example A: Relevant past query found and usable
-- User: "How many WALLS MAGNUM CHILL are in stock?"
-- Steps:
-  1. Extract intent → search_query="How many WALLS MAGNUM CHILL are in stock?"
-  2. Call search_relevant_queries(search_query=...) → returns a strong match with both client_query and sql_query.
-  3. Validate that the retrieved sql_query fully answers the user’s request.
-     - If yes, identify tables used, e.g., ["Products","BranchProducts"].
-     - Optionally confirm with get_table_info(["Products","BranchProducts"]) if schema is needed.
-  4. Call execute_sql_query(query=..., limit=5).
-  5. Return concise human summary
+Example A — Simple intent
+
+User: “Show me all customers from Karachi.”
+Agent reasoning:
+
+- Find Customers table in metadata.
+- Identify City or Address columns.
+
+- Build query:
+    "SELECT CustomerName, City FROM Customers WHERE City = 'Karachi';"
 
 
-Example B: Past query found but not relevant
-- User: "Show me top 5 suppliers by purchase orders last month."
-- Steps:
-  1. Extract intent → search_query="top 5 suppliers by purchase orders last month".
-  2. Call search_relevant_queries(search_query=...) → returns a past query but on close inspection it does **not** answer the user’s request.
-  3. Ignore the irrelevant sql_query.
-  4. Identify relevant tables from TABLE_LIST, e.g., ["Suppliers","PurchaseOrders","PurchaseOrderlines"].
-  5. Call get_table_info([...]) to confirm columns and relationships.
-  6. Generate a new SQL query tailored to the request.
-  7. Call execute_sql_query(query=..., limit=5).
-  8. Return concise human summary
-
-Example C: No past query found
-- User: "What is the slowest selling product this year?"
-- Steps:
-  1. Extract intent → search_query="slowest selling product this year".
-  2. Call search_relevant_queries(search_query=...) → no relevant match found.
-  3. Identify likely relevant tables from TABLE_LIST, e.g., ["ProductSales","Products"].
-  4. Call get_table_info(["ProductSales","Products"]) to understand available columns (e.g., sales quantity, product description, dates).
-  5. Generate a new SQL query using schema details.
-  6. Call execute_sql_query(query=..., limit=5).
-  7. Return concise human summary
+- Call execute_sql_query.
+- Return concise summary of first few results.
 
 
-FOCUS POINTS (for testing & tuning)
-- Avoid giving sample queries to user on your own.
-- Relevance threshold: tune how aggressive you are in reusing historical queries. If uncertain, prefer validation via get_table_info.
-- CLIP_LIMIT: default is 5; sometimes set to 10 for summaries. `limit` can be adjusted programmatically when agent calls tool.
-- Error retries: allow up to 2 automatic retries after calling get_table_info. After that, escalate (return structured error).
-- Ambiguous table names: if multiple TABLE_LIST entries match, include all plausible table names in get_table_info in one call.
-- Keep final user-facing messages short and actionable.
+Example B — Multi-table logic
+
+User: “List top 5 products by total sales.”
+Agent reasoning:
+
+- From metadata, identify tables: Products, Sales, OrderDetails, etc.
+- Construct join using foreign keys.
+- Build aggregation query using SUM(sales_amount) or equivalent.
+- Limit results to 5.
+- Execute and summarize.
+
+Example C — Ambiguous or missing info
+
+User: “Show supplier rankings.”
+Agent reasoning:
+
+- Check if Suppliers or Purchases tables exist in metadata.
+- If unclear how “ranking” is defined (e.g., by total orders, deliveries, or spend), ask a short clarification:
+    “Do you want suppliers ranked by purchase volume or total number of orders?”
+
+
+FOCUS POINTS
+
+- Use metadata for schema awareness — never guess table or column names.
+- Avoid overcomplicated joins; keep queries minimal but correct.
+- Limit results to the top few rows for clarity.
+- Return short, professional natural language summaries.
+- Use retries intelligently when errors can be corrected automatically.
 
 DO NOT
-- Do not invent table or column names. If a needed column is not present in the returned DDL, call get_table_info again or ask for clarification.
-- Do not execute non-SELECT destructive statements.
-- Do not return raw DB error stacks to users; return concise errors that help with regeneration (e.g., "column 'x' not found in table 'Y'").
+
+- Do not execute any non-SELECT statements.
+- Do not return raw SQL error text to the user.
+- Do not fabricate schema details not present in metadata.
+- Do not generate synthetic sample queries unrelated to the user’s intent..
 """
 
         user_prompt = """
@@ -465,7 +290,7 @@ Conversation:
         agent = (
                 {
                     "conversation": lambda x: x["conversation"],
-                    "table_list": lambda x: x["table_list"],
+                    "metadata": lambda x: x["metadata"],
                     "agent_scratchpad": lambda x: format_to_openai_tool_messages(
                         x["intermediate_steps"]
                     ),
@@ -479,18 +304,18 @@ Conversation:
 
         prompt_input = {
             "conversation": conversation,
-            "table_list": "\n".join(TABLE_LIST),
+            "metadata": metadata,
             "intermediate_steps": []
         }
         # agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
         # output = agent_executor.invoke(prompt_input)
         # logger.info(output)
 
-        testing_prompt = agent_prompt.format(**{
-            "conversation": prompt_input["conversation"],
-            "table_list": prompt_input["table_list"],
-            "agent_scratchpad": format_to_openai_tool_messages(prompt_input["intermediate_steps"])
-        })
+        # testing_prompt = agent_prompt.format(**{
+        #     "conversation": prompt_input["conversation"],
+        #     "table_list": prompt_input["table_list"],
+        #     "agent_scratchpad": format_to_openai_tool_messages(prompt_input["intermediate_steps"])
+        # })
         output = agent.invoke(prompt_input)
         logger.info(output)
 
@@ -502,10 +327,6 @@ Conversation:
                     name = selected_tool.tool
                     tool_input = selected_tool.tool_input
 
-                    if name == "search_relevant_queries":
-                        tool_output = search_relevant_queries_imp(settings, logger, **tool_input)
-                    if name == "get_table_info":
-                        tool_output = get_table_info_imp(settings, logger, **tool_input)
                     if name == "execute_sql_query":
                         tool_output = execute_sql_query_imp(settings, logger, **tool_input)
 
@@ -515,11 +336,11 @@ Conversation:
                         selected_tool, tool_output
                     ))
 
-            testing_prompt = agent_prompt.format(**{
-                "conversation": prompt_input["conversation"],
-                "table_list": prompt_input["table_list"],
-                "agent_scratchpad": format_to_openai_tool_messages(prompt_input["intermediate_steps"])
-            })
+            # testing_prompt = agent_prompt.format(**{
+            #     "conversation": prompt_input["conversation"],
+            #     "table_list": prompt_input["table_list"],
+            #     "agent_scratchpad": format_to_openai_tool_messages(prompt_input["intermediate_steps"])
+            # })
             output = agent.invoke(prompt_input)
             logger.info(output)
 
@@ -532,17 +353,17 @@ Conversation:
         return f"Error in mhs agent:\n{str(e)}"
 
 # # #### Testing Code ####
-# from utils import get_settings, get_logger
+#from utils import get_settings, get_logger
 #
-# settings = get_settings()
-# logger = get_logger(settings)
+#settings = get_settings()
+#logger = get_logger(settings)
 # initialize_client_sql_queries_vector_database(settings, logger)
 #
 # # #### Tools testing ####
 # # output = search_relevant_queries_imp(settings, logger, "How many coca cola 1.5 liter are in stock?")
 # # output = get_table_info_imp(settings, logger, ["ProductSales", "non_existing_table"])
-# # output = execute_sql_query_imp(settings, logger, "SELECT * FROM ProductSalesh", limit=3)
-# # pprint(output)
+#output = execute_sql_query_imp(settings, logger, "SELECT * FROM ProductSalesh", limit=3)
+#print(output)
 # #
 # # Sample conversation
 # conversation = MessagesList()
