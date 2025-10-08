@@ -1,22 +1,15 @@
-"""Fast API class."""
+""""Fast API class."""
 import json
 import os
 from typing import Dict, List
-
-from fastapi import FastAPI, Request, Response, UploadFile, File, Form
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
-# from faster_whisper import WhisperModel
-import logging
+import uvicorn
 
-from fastapi import WebSocket
+
 
 from data_models import FrontendSendMessage, MessagesList, Message, Sender, UUIDRequest
-from sql_chat_agent import initialize_client_sql_queries_vector_database, sql_agent
-from speech_to_text import initialize_speech_to_text_local_whisper_model, \
-    speech_to_text_using_local_whisper, speech_to_text_using_openai_whisper, speech_to_text_using_groq_whisper
-from text_to_speech import text_to_speech_using_gtts, text_to_speech_using_openai
+from sql_chat_agent import sql_agent
 from utils import get_settings, get_logger
 
 app = FastAPI()
@@ -31,13 +24,6 @@ app.add_middleware(
 settings = get_settings()
 logger = get_logger(settings)
 messages_history: Dict[str, MessagesList] = {}
-
-initialize_client_sql_queries_vector_database(settings, logger)
-
-
-# initialize_speech_to_text_local_whisper_model(logger)
-# initialize_text_to_speech_parler_model(logger)
-
 
 def save_chat_history(uuid: str):
     """
@@ -56,6 +42,10 @@ def save_chat_history(uuid: str):
     Raises:
         KeyError: If the UUID does not exist in the `messages_history` dictionary.
     """
+    # Ensure the uuid exists to avoid KeyError when saving
+    if uuid not in messages_history:
+        messages_history[uuid] = MessagesList()
+
     chat_history_file = os.path.join(settings.get("CHAT_HISTORY_PATH"), f"{uuid}_chat_history.json")
 
     # Convert MessagesList to a list of dictionaries for saving as JSON
@@ -93,6 +83,10 @@ async def send_message(message: FrontendSendMessage, request: Request):
 
     global messages_history
 
+    # Ensure the uuid exists before accessing it to prevent KeyError
+    if message.uuid not in messages_history:
+        messages_history[message.uuid] = MessagesList()
+
     messages_history[message.uuid].add_message(Message(sender=Sender.USER, text=message.text))
 
     # reply = message.text + " (processed)"  # temp reply
@@ -107,101 +101,7 @@ async def send_message(message: FrontendSendMessage, request: Request):
     return {"response": reply}
 
 
-@app.post("/send_audio")
-async def send_audio(audio_file: UploadFile = File(...), uuid: str = Form(...)):
-    """
-    Handles incoming audio messages, converts the audio to text, generates a response,
-    and sends the response back to the user along with an audio version of the response.
-
-    Args:
-        audio_file (UploadFile): The uploaded audio file sent by the user.
-        uuid (str): The UUID associated with the chat session.
-
-    Returns:
-        JSONResponse: A JSON response containing the transcribed input audio text, the AI's response text,
-        and a URL to access the AI's audio response.
-
-    Raises:
-        Exception: If there is an error in processing the audio file or generating the response.
-    """
-    try:
-        logger.info(f"\n\nAudio Message received:\n{uuid}")
-        input_audio_file_path = os.path.join(settings.get("TEMP_INCOMING_AUDIO_PATH"),
-                                             f"{uuid}_input_{len(messages_history[uuid].messages_list) + 1}.wav")  # wav/webm
-        # Save the uploaded audio file temporarily
-        with open(input_audio_file_path, "wb") as f:
-            f.write(await audio_file.read())
-
-        # Transcribe the audio
-        # input_audio_text = "Temp audio extracted text"
-        # input_audio_text = speech_to_text_using_local_whisper(logger, input_audio_file_path)
-        # input_audio_text = speech_to_text_using_openai_whisper(settings, logger, input_audio_file_path)
-        input_audio_text = speech_to_text_using_groq_whisper(settings, logger, input_audio_file_path)
-        logger.info(f"Audio converted to text.")
-
-        messages_history[uuid].add_message(Message(sender=Sender.USER, text=input_audio_text))
-
-        # reply = input_audio_text + " (processed)"  # temp reply
-        reply = sql_agent(settings, logger, messages_history[uuid])
-        logger.info(f"Response generated.")
-
-        messages_history[uuid].add_message(Message(sender=Sender.ASSISTANT, text=reply))
-
-        # output_audio_file_name = f"{uuid}_output_{len(messages_history[uuid].messages_list)}.wav"
-        # # output_audio_file_name = "parler_tts_out.wav"  # temp reply
-        # output_audio_file_path = os.path.join(settings.get("TEMP_OUTGOING_AUDIO_PATH"), output_audio_file_name)
-        # # text_to_speech_using_parler(logger, reply, output_audio_file_path)
-        # # text_to_speech_using_gtts(logger, reply, output_audio_file_path)
-        # text_to_speech_using_openai(logger, reply, output_audio_file_path)
-        #
-        # logger.info(f"Response text converted to audio.")
-        #
-        # # Return the response along with the audio URL
-        # audio_url = f"{settings.get('SERVER_FILES_IP')}/get_audio/{output_audio_file_name}"  # Full URL to access audio
-
-        save_chat_history(uuid)
-
-        return JSONResponse(content={
-            "input_audio_text": input_audio_text,
-            "output_audio_text": reply,
-            # "audio_url": audio_url,
-        }
-        )
-    except Exception as e:
-        logger.warning(f"Error processing audio: {e}")
-        return Response(content="Error processing audio", status_code=500)
-    # finally:
-    ##     Clean up: remove the temporary file if it exists
-    # if os.path.exists(input_audio_file_path):
-    #     os.remove(input_audio_file_path)
-
-
-#
-@app.get("/get_audio/{audio_file_name}")
-def get_audio(audio_file_name: str):
-    """
-    Handles requests to retrieve an audio file by its filename.
-
-    Args:
-        audio_file_name (str): The name of the audio file to retrieve.
-
-    Returns:
-        FileResponse: The requested audio file if it exists.
-        Response: An error response with status code 404 if the file is not found.
-
-    """
-    logger.info(f"Received request for audio: {audio_file_name}")  # Debug line
-
-    # Construct the full path to the audio file
-    file_path = os.path.join(settings.get("TEMP_OUTGOING_AUDIO_PATH"),
-                             audio_file_name)  # Safer way to construct file paths
-
-    if os.path.exists(file_path):
-        return FileResponse(file_path, media_type="audio/wav", filename="response.wav")
-    return Response(content="Audio file not found.", status_code=404)
-
-
 if __name__ == "__main__":
-    import uvicorn
+    
 
     uvicorn.run(app, host=settings.get("SERVER_IP"), port=settings.get("SERVER_PORT"))
