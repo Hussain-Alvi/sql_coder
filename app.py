@@ -1,16 +1,15 @@
 """"Fast API class."""
 import json
 import os
+import time
 from typing import Dict, List
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-
-
 from data_models import FrontendSendMessage, MessagesList, Message, Sender, UUIDRequest
 from sql_chat_agent import sql_agent
-from utils import get_settings, get_logger
+from utils import get_settings, get_logger, get_db_connection
 
 app = FastAPI()
 
@@ -23,7 +22,9 @@ app.add_middleware(
 
 settings = get_settings()
 logger = get_logger(settings)
+db_conn_str: str = get_db_connection(settings, logger)
 messages_history: Dict[str, MessagesList] = {}
+
 
 def save_chat_history(uuid: str):
     """
@@ -82,6 +83,7 @@ async def send_message(message: FrontendSendMessage, request: Request):
     logger.info(f"\n\nMessage received:\n{message.uuid}: {message.text}")
 
     global messages_history
+    global db_conn_str
 
     # Ensure the uuid exists before accessing it to prevent KeyError
     if message.uuid not in messages_history:
@@ -90,7 +92,10 @@ async def send_message(message: FrontendSendMessage, request: Request):
     messages_history[message.uuid].add_message(Message(sender=Sender.USER, text=message.text))
 
     # reply = message.text + " (processed)"  # temp reply
-    reply = sql_agent(settings, logger, messages_history[message.uuid])
+    start_time = time.time()
+    reply = sql_agent(settings, logger, db_conn_str, messages_history[message.uuid])
+    elapsed_time = time.time() - start_time
+    logger.info(f"Bot response execution took {elapsed_time:.2f} seconds")
 
     messages_history[message.uuid].add_message(Message(sender=Sender.ASSISTANT, text=reply))
 
@@ -102,6 +107,4 @@ async def send_message(message: FrontendSendMessage, request: Request):
 
 
 if __name__ == "__main__":
-    
-
     uvicorn.run(app, host=settings.get("SERVER_IP"), port=settings.get("SERVER_PORT"))

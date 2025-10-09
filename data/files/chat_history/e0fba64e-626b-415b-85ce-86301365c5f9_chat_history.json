@@ -1,0 +1,22 @@
+[
+    {
+        "text": "Hi! I\u2019m your SQL assistant. Tell me what data you\u2019d like to see, and I\u2019ll query the database for you.",
+        "sender": "Assistant"
+    },
+    {
+        "text": "Hi\n",
+        "sender": "User"
+    },
+    {
+        "text": "Hi! How can I help you today? Tell me what you\u2019d like to see\u2014e.g., product prices, stock by branch, top-selling items, or purchase orders by supplier\u2014and I\u2019ll run the query.",
+        "sender": "Assistant"
+    },
+    {
+        "text": "can you Tell me how many products we have",
+        "sender": "User"
+    },
+    {
+        "text": "We have 4,016 products in total.",
+        "sender": "Assistant"
+    }
+]

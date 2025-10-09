@@ -1,0 +1,14 @@
+[
+    {
+        "text": "Hi! I\u2019m your SQL assistant. Tell me what data you\u2019d like to see, and I\u2019ll query the database for you.",
+        "sender": "Assistant"
+    },
+    {
+        "text": "What are the lowest margin products that are not Cigarette and that are not in promotion.?\n",
+        "sender": "User"
+    },
+    {
+        "text": "The 5 lowest margin products that are not Cigarettes and not in promotion are all \"CADBURY CREME EGG 5 PACK PS\" with barcodes \"7622210344205\". Their selling prices range from \u00a32.00 to \u00a33.99, and they all have negative margins due to high cost prices (\u00a353.49). Showing first 5 of potentially more results.",
+        "sender": "Assistant"
+    }
+]

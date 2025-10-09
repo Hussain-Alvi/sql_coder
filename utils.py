@@ -3,6 +3,7 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 
+import pyodbc
 from dotenv import load_dotenv
 from dynaconf import Dynaconf
 
@@ -61,3 +62,38 @@ def get_logger(settings: Dynaconf) -> logging.getLogger:
         logger.addHandler(stream_handler)
 
     return logger
+
+
+def get_db_connection(settings: Dynaconf, logger: logging.Logger) -> str | None:
+
+    """
+    Returns a SQL Server connection based on Dynaconf settings.
+    If USE_PRODUCTION_DB is True, uses production credentials;
+    otherwise uses local trusted connection.
+    """
+
+    try:
+        if settings.USE_PRODUCTION_DB:
+            conn_str = (
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={settings.DB_SERVER};"
+                f"DATABASE={settings.DB_NAME};"
+                f"UID={settings.USERNAME};"
+                f"PWD={settings.PASSWORD};"
+            )
+        else:
+            conn_str = (
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={settings.DB_SERVER};"
+                f"DATABASE={settings.DB_NAME};"
+                f"Trusted_Connection=yes;"
+                f"TrustServerCertificate=yes;"
+            )
+
+        # return pyodbc.connect(conn_str)
+        return conn_str
+
+    except Exception as e:
+        logger.error(f"SQL Connection Error: {e}")
+        return None
+

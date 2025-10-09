@@ -1,0 +1,22 @@
+[
+    {
+        "text": "Hi! I\u2019m your SQL assistant. Tell me what data you\u2019d like to see (e.g., \u201cTop 10 products by sales last month\u201d or \u201cCurrent price for product X\u201d), and I\u2019ll query the database for you.",
+        "sender": "Assistant"
+    },
+    {
+        "text": "hi",
+        "sender": "User"
+    },
+    {
+        "text": "Hi there! What data would you like to see? For example:\n- Top 10 products by sales last month\n- Current price for a specific product\n- Stock levels for a product across branches\n- Recent purchase orders for a supplier",
+        "sender": "Assistant"
+    },
+    {
+        "text": "tell me how many products do we have",
+        "sender": "User"
+    },
+    {
+        "text": "We currently have 4,016 products in the database.",
+        "sender": "Assistant"
+    }
+]
