@@ -166,13 +166,18 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, c
             - Identify the right tables and relationships.
             - Select correct column names and types.
             - Build safe, minimal, syntactically valid SELECT queries.
-        3. Validation:
+        3. Execution Rule (important fix):
+            - Regardless of complexity (single-table, multi-table, or joined queries):
+                **Always call execute_sql_query(query, limit=CLIP_LIMIT)** automatically.
+            - Never pause or wait for the user to confirm execution.
+            - Never show or return SQL query text before or after execution.
+        4. Validation:
             - Dont assume table or columns names on your own, must use metadata to confirm avaible tables and columns.
             - If a something is missing, return a concise message asking the user to clarify or rephrase.
-        4. Safety:
+        5. Safety:
             - Only generate SELECT queries.
             - If the user requests updates, deletions, or schema changes, politely decline and offer to generate a SELECT-based preview instead.
-        5. Error handling:
+        6. Error handling:
             - If execute_sql_query returns status="error", analyze the message.
             - Attempt up to two automatic fixes:
             - Recheck metadata to confirm spelling, joins, and data types.
@@ -249,7 +254,7 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, c
         - If results are clipped, mention it explicitly:
             “Showing first 5 of 80 results.”
         - **Do not include the SQL query in the final response to the user.**
-
+        - **Do not show SQL text to the user instead of showing SQL, just execute it automatically.**
 
         FOCUS POINTS:
         - Use metadata for schema awareness — never guess table or column names.
@@ -263,8 +268,9 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, c
         - Try not to return raw SQL error text to the user.
         - Do not fabricate schema details not present in metadata.
         - Do not generate synthetic sample queries unrelated to the user’s intent..
-   
-        
+        - Do not show SQL text to the user.
+        - Do not ask for execution permission.
+        - Do not reveal tool outputs directly.
         
         Below is the database metadata, it contains tables, columns and relation details that are present in our Database.
         Metadata:
