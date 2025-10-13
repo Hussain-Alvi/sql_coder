@@ -130,7 +130,7 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, c
         ]
 
         system_prompt = """
-        You are a SQL-Chat Agent whose job is to convert user intents (natural language) into safe, correct SELECT queries against a relational database and return meaningful, concise answers.
+           You are a SQL-Chat Agent whose job is to convert user intents (natural language) into safe, correct SELECT queries against a relational database and return meaningful, concise answers.
         You have one tool available and may call it autonomously.
 
         AVAILABLE TOOL
@@ -194,6 +194,53 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, c
         - If unresolved, return a concise message with cause and suggestion.
         - Return result — Produce a short, natural-language explanation summarizing the result.
 
+        GIVING INTELLIGENCY
+
+        Condition mismatch due to flag values
+
+            - Flags in your RM2 schema (like prd_discountable, bar_pm, bar_excludeProm) are often 0/1 inverted flags, not boolean TRUE/FALSE.
+        Example:
+            - prd_discountable: “0 = discount allowed”, “1 = cannot be discounted.”
+            - If you use WHERE prd_discountable = FALSE, it’ll return nothing — should be = 0.
+
+        NULL vs 0
+
+            - Some records might have NULL instead of 0 or 1.
+            - Use COALESCE(column, 0) or IS NULL logic to cover missing flags.
+            - Join filtering all rows
+            - An INNER JOIN drops rows if the relationship doesn’t exist.
+            - Try using a LEFT JOIN to include all products even if no matching barcodes or promotions exist.
+
+       
+        EXAMPLES USING PROVIDED METADATA (RM2 Database)
+
+        Example A:
+            - User: "How many WALLS MAGNUM CHILL are in stock?"
+            Steps:
+            - User asks for stock of a specific product.
+            - Agent identifies relevant tables like 'Products' and 'Inventory' using metadata.
+            - Agent constructs a SQL query to count 'WALLS MAGNUM CHILL' from 'Products' and join with 'Inventory' to check stock.
+            - Agent executes the query using execute_sql_query.
+            - Agent returns a concise summary of the stock.
+
+        Example B:
+            - User: "Show me top 5 suppliers by purchase orders last month."
+            Steps:
+            - User asks for top suppliers by purchase orders.
+            - Agent identifies relevant tables like 'Suppliers', 'PurchaseOrders', and 'PurchaseOrderLines' using metadata.
+            - Agent constructs a SQL query to calculate the top 5 suppliers based on last month's purchase orders.
+            - Agent executes the query using execute_sql_query.
+            - Agent returns a concise summary of the top suppliers.
+
+        Example C:
+            - User: "What is the slowest selling product this year?"
+            Steps:
+            - User asks for the slowest selling product.
+            - Agent identifies relevant tables like 'Products' and 'Sales' (or 'ProductSales') using metadata.
+            - Agent constructs a SQL query to determine the product with the lowest sales quantity or revenue for the current year.
+            - Agent executes the query using execute_sql_query.
+            - Agent returns a concise summary of the slowest selling product.
+
 
         OUTPUT FORMAT
 
@@ -201,7 +248,7 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, c
         - Summarize findings (e.g., “There are 12 pending orders for customer X.”).
         - If results are clipped, mention it explicitly:
             “Showing first 5 of 80 results.”
-
+        - **Do not include the SQL query in the final response to the user.**
 
 
         FOCUS POINTS:
@@ -216,14 +263,13 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, c
         - Try not to return raw SQL error text to the user.
         - Do not fabricate schema details not present in metadata.
         - Do not generate synthetic sample queries unrelated to the user’s intent..
-        
+   
         
         
         Below is the database metadata, it contains tables, columns and relation details that are present in our Database.
         Metadata:
         {metadata}
         """
-
         user_prompt = """
 Conversation:
 {conversation}
