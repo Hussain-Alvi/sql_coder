@@ -16,7 +16,6 @@ header.  sup_pk  suppliers
 prd_dptfk  Foreign key for the department associated to the product.  dpt_pk  departments
 prd_subfk  Foreign key for the sub department associated to the
 product (optional).  sub_pk  subdepartments
-prd_ssbfk  NOT USED
 prd_vatfk  Foreign key for the VAT tax rate associated to the product.  vat_pk  vatrates
 prd_seafk  Foreign key for the seasonal date range associated to the
 product (optional). This is used in ordering procedures.  sea_pk  seasons
@@ -84,11 +83,6 @@ prd_deliDptNum
 prd_created  Product Created Date
 prd_deleted  Deleted date
 prd_manualVatRate
-Products_Cloud_Changed_On  Not Used
-Products_Cloud_Updated_On  Not Used
-Products_MasterMergeRequired  Not Used
-Products_TriggerSupress  Not Used
-Products_MasterMergedOn  Not Used
 prd_quickItem
 prd_diet  csv list
 prd_CoA  Country of Origin
@@ -135,11 +129,6 @@ bar_lastPlofChange  Date when the barcode / price was last updated via the
 supplier plof download changes.
 bar_ESLEnable  Status flag. Is the barcode enabled for electronic shelf edge
 labels.
-Barcodes_Cloud_Changed_On  Not Used
-Barcodes_Cloud_Updated_On  Not Used
-Barcodes_MasterMergeRequired  Not Used
-Barcodes_TriggerSupress  Not Used
-Barcodes_MasterMergedOn  Not Used
 bar_web  Status flag for web Store Upload
 bar_minrrp  Value for minimum RRP value. Currently only used with
 Morrisons supplier.
@@ -174,11 +163,6 @@ spr_parentcode  Parent Code used to link product variants from specific
 suppliers.
 spr_notes  Custom Notes field
 spr_packSize  Pack Size
-SupplierProducts_Cloud_Changed_On  Not Used
-SupplierProducts_Cloud_Updated_On  Not Used
-SupplierProducts_MasterMergeRequired  Not Used
-SupplierProducts_TriggerSupress  Not Used
-SupplierProducts_MasterMergedOn  Not Used
 
 
 Prices
@@ -199,11 +183,6 @@ prc_cashier  Cashier Name that created / updated.
 prc_preafk  Reason for change  prea_pk  pricechangereasons
 prc_accepted  Status flag for price change approval. Mostly redundant
 multisite option.
-Prices_Cloud_Changed_On  not used
-Prices_Cloud_Updated_On  not used
-Prices_MasterMergeRequired  not used
-Prices_TriggerSupress  not used
-Prices_MasterMergedOn  not used
 
 
 Vprices
@@ -230,11 +209,7 @@ cst_price  Cost price value
 cst_effective  Effective date
 cst_timestamp  Timestamp for when record was last updated.
 cst_cashier  Cashier name that added / updated.
-CostPrices_Cloud_Changed_On  not used
-CostPrices_Cloud_Updated_On  not used
-CostPrices_MasterMergeRequired  not used
-CostPrices_TriggerSupress  not used
-CostPrices_MasterMergedOn  not used
+
 
 
 VcostPrices
@@ -294,11 +269,6 @@ dpt_sageExtract  Status flag. Defines if department is included in Sage
 accounting extract.
 dpt_staffDiscount  % value for staff discount. Used at tills.
 dpt_sageExpenseCode  Sage Expense code
-Departments_Cloud_Changed_On  Not Used
-Departments_Cloud_Updated_On  Not Used
-Departments_MasterMergeRequired  Not Used
-Departments_TriggerSupress  Not Used
-Departments_MasterMergedOn  Not Used
 
 
 SubDepartments
@@ -325,8 +295,7 @@ sub_PurchaseCategory  Redundant
 sub_SalesCategory  Redundant
 sub_eftfk  Foreign key for Eft codes used at tills by fuel sites for
 specific transaction tenders.  eft_pk  eftcodes
-sub_newsfreq  not used
-sub_newstime  not used
+
 sub_default  Status flag. Defines if the SubDepartment is the default
 within the department.
 sub_CheckShortDate  Status flag. Enables check short date prompt on tills.
@@ -335,12 +304,6 @@ supplier price changes in bulk.  plr_pk  plofrules
 sub_excludeNineFives  excluded
 sub_staffDiscount  % value for staff discount. Used at tills.
 SubDepartments_Cloud_Changed_O
-n not Used
-SubDepartments_Cloud_Updated_On  not Used
-SubDepartments_MasterMergeRequir
-ed not Used
-SubDepartments_TriggerSupress  not Used
-SubDepartments_MasterMergedOn  not Used
 
 
 BranchProducts
@@ -378,12 +341,6 @@ bxp_Prom  is Prom?
 bxp_avgSales  Average sales value, calculated from recent sales history.
 bxp_stocked  Status flag. Not stocked lines are restricted in ordering
 procedures.
-BranchProducts_Cloud_Changed_On  Not Used
-BranchProducts_Cloud_Updated_On  Not Used
-BranchProducts_MasterMergeRequir
-ed Not Used
-BranchProducts_TriggerSupress  Not Used
-BranchProducts_MasterMergedOn  Not Used
 
 
 Suppliers
@@ -423,11 +380,6 @@ warehouse in a multisite.
 sup_excludeFromWarehouse  Status flag. Excludes supplier from warehouse supplier
 grouping in a warehouse enabled multisite.
 sup_hPosUID
-Suppliers_Cloud_Changed_On  not Used
-Suppliers_Cloud_Updated_On  not Used
-Suppliers_MasterMergeRequired  not Used
-Suppliers_TriggerSupress  not Used
-Suppliers_MasterMergedOn  not Used
 
 
 PromotionCosts
@@ -445,12 +397,7 @@ pcs_promcd  Promotional reference code
 pcs_timestamp  timestamp for when record was last updated.
 pcs_rebate  Rebate value
 pcs_allocated  Flag to denote if the promotion has stock allocation.
-PromotionCosts_Cloud_Changed_On  not used
-PromotionCosts_Cloud_Updated_On  not used
 PromotionCosts_MasterMergeRequir
-ed not used
-PromotionCosts_TriggerSupress  not used
-PromotionCosts_MasterMergedOn  not used
 pcs_ltycost  Loyalty scheme cost price
 
 
@@ -481,12 +428,7 @@ prm_solduntil  Maximum number of units to sell at promotional price
 prm_maxtranqty  Max number of units at promotional price per transaction.
 prm_effPrint
 prm_expPrint
-PromotionPrices_Cloud_Changed_On  not used
-PromotionPrices_Cloud_Updated_On  not used
 PromotionPrices_MasterMergeRequir
-ed not used
-PromotionPrices_TriggerSupress  not used
-PromotionPrices_MasterMergedOn  not used
 prm_ltyprc  Loyalty scheme price
 prm_web  Enable web Store Upload
 
@@ -501,14 +443,9 @@ pcp_prmfk  Foreign key to promotional selling price  prm_pk  promotionprices
 pcp_pcsfk  Foreign key to promotional cost price  pcs_pk  promotioncosts
 pcp_timestamp  timestamp for when the record was last updated
 PromotionCostPrice_Cloud_Changed
-_On not used
 PromotionCostPrice_Cloud_Updated_
-On not used
 PromotionCostPrice_MasterMergeRe
-quired  not used
-PromotionCostPrice_TriggerSupress  not used
 PromotionCostPrice_MasterMergedO
-n not used
 
 
 BranchPromotions
@@ -522,13 +459,8 @@ bpr_brnfk  Foreign key linking to branch  brn_pk  branches
 bpr_applies  Flag defining if the promotion applies to this branch
 bpr_timestamp  timestamp for when record was last updated
 BranchPromotions_Cloud_Changed_
-On not used
 BranchPromotions_Cloud_Updated_
-On not used
 BranchPromotions_MasterMergeReq
-uired  not used
-BranchPromotions_TriggerSupress  not used
-BranchPromotions_MasterMergedOn  not used
 
 
 MMHeaders
@@ -568,11 +500,6 @@ mmh_ontillstocksold  active until amount sold
 mmh_maxdealstran  max deals per transaction
 mmh_change  has changed?
 mmh_laffk  Foreign key of multibuy label format  laf_pk  labelformats
-MMHeaders_Cloud_Changed_On  not used
-MMHeaders_Cloud_Updated_On  not used
-MMHeaders_MasterMergeRequired  not used
-MMHeaders_TriggerSupress  not used
-MMHeaders_MasterMergedOn  not used
 mmh_trigger5  trigger quantity 5
 mmh_trigger6  trigger quantity 6
 mmh_loyalty  Is part of a loyalty scheme
@@ -592,11 +519,6 @@ mmd_triggerno  Trigger Number associated to (1 – 6 from MMHeaders)
 mmd_repprice  Unit price used for reporting
 mmd_timestamp  Timestamp for when record was last updated
 mmd_qtysold  Number of units sold
-MMDetails_Cloud_Changed_On  not used
-MMDetails_Cloud_Updated_On  not used
-MMDetails_MasterMergeRequired  not used
-MMDetails_TriggerSupress  not used
-MMDetails_MasterMergedOn  not used
 
 
 MMBranchHeaders
@@ -615,13 +537,8 @@ mmb_discvalue  discounted value of products
 mmb_timestamp  timestamp for when record was last updated
 mmb_applies  Glag that defines if deal is applied at branch
 MMBranchHeaders_Cloud_Changed_
-On not used
 MMBranchHeaders_Cloud_Updated_
-On not used
 MMBranchHeaders_MasterMergeReq
-uired  not used
-MMBranchHeaders_TriggerSupress  not used
-MMBranchHeaders_MasterMergedOn  not used
 
 
 ProductSales
@@ -642,11 +559,7 @@ psa_weekno  week number
 psa_timestamp  Timestamp for when record was last updated
 psa_vatrate  Vatrate % value at time of sale
 psa_asafk  Foreign key linking to account sales for reporting.  asa_pk  accountsales
-ProductSales_Cloud_Changed_On  not Used
-ProductSales_Cloud_Updated_On  not Used
-ProductSales_MasterMergeRequired  not Used
-ProductSales_TriggerSupress  not Used
-ProductSales_MasterMergedOn  not Used
+
 
 
 PurchaseOrders
@@ -690,13 +603,7 @@ ord_brnfk  Foreign key linking to branch  brn_pk  branches
 ord_openOnPC
 ord_transmittedDate  Date order was transmitted to supplier
 ord_surcharge  Surcharge value
-PurchaseOrders_Cloud_Changed_On  Not used
-PurchaseOrders_Cloud_Updated_On  Not used
 PurchaseOrders_MasterMergeRequir
-ed Not used
-PurchaseOrders_TriggerSupress  Not used
-PurchaseOrders_MasterMergedOn  Not used
-
 
 PurchaseOrderLines
 
@@ -735,14 +642,9 @@ orl_suggested  Suggested order quantity (legacy)
 orl_leaflet
 orl_Discrepancy
 PurchaseOrderlines_Cloud_Changed
-_On Not used
 PurchaseOrderlines_Cloud_Updated_
-On Not used
 PurchaseOrderlines_MasterMergeRe
-quired  Not used
-PurchaseOrderlines_TriggerSupress  Not used
 PurchaseOrderlines_MasterMergedO
-n Not used
 orl_qtyDifference
 
 
@@ -771,17 +673,11 @@ brn_regnumber
 brn_email  Contact details
 brn_website  Contact details
 brn_fax  Contact details
-brn_jhStoreNumber  Not Used
 brn_created  Created date
 Brn_MD  Managing Director
 brn_mobile  Mobile phone number
 brn_bacsSort  bacsSort code
 brn_bacsAcc  bacs account code
-Branches_Cloud_Changed_On  not used
-Branches_Cloud_Updated_On  not used
-Branches_MasterMergeRequired  not used
-Branches_TriggerSupress  not used
-Branches_MasterMergedOn  not used
 brn_Consl
 brn_logo  Logo
 brn_RM2GO  Flag indicating if site is enabled for RM2GO handheld
@@ -797,11 +693,7 @@ ban_pk  Primary Key
 ban_description  Description
 ban_priority  priority
 ban_timestamp  timestamp for when record was last updated
-PriceBands_Cloud_Changed_On  not used
-PriceBands_Cloud_Updated_On  not used
-PriceBands_MasterMergeRequired  not used
-PriceBands_TriggerSupress  not used
-PriceBands_MasterMergedOn  not used
+
 
 
 Vatrates
@@ -818,11 +710,7 @@ vat_newrate  New Rate
 vat_changedate  Date to be changed
 vat_oldrate  Old Rate
 vat_created  Date Created
-Vatrates_Cloud_Changed_On  not used
-Vatrates_Cloud_Updated_On  not used
-Vatrates_MasterMergeRequired  not used
-Vatrates_TriggerSupress  not used
-Vatrates_MasterMergedOn  not used
+
 
 
 PromotionEvents
@@ -846,9 +734,3 @@ pev_year  Year
 pev_eventConfirmed  Flag indicating if a user has confirmed the promotional
 period details.
 PromotionEvents_Cloud_Changed_O
-n not used
-PromotionEvents_Cloud_Updated_On  not used
-PromotionEvents_MasterMergeRequir
-ed not used
-PromotionEvents_TriggerSupress  not used
-PromotionEvents_MasterMergedOn  not used
