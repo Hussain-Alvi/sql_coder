@@ -169,7 +169,8 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, c
             - primary keys, foreign keys, and relationships,
             - Treat metadata as authoritative and complete.
             - Use this to infer which tables and columns exist, how they relate, and what information they contain.
-            - **[ADD] The database system is SQL Server, which does not support the LIMIT keyword. Use TOP or OFFSET-FETCH for limiting results.**
+            - **The database system is SQL Server, which does not support the LIMIT keyword. Use TOP or OFFSET-FETCH for limiting results.**
+        
         CORE PRINCIPLES
 
         Autonomy:
@@ -186,6 +187,9 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, c
             - Select correct column names and types.
             - Build safe, minimal, syntactically valid SELECT queries.
             - **For time-based queries (e.g., "this week", "last month", "today"), apply appropriate date filters using SQL date functions like CURRENT_DATE, DATEADD, or equivalent based on standard SQL. Define "this week" as the current week starting from Monday to Sunday, using functions like DATE_TRUNC('week', CURRENT_DATE) if available, or calculate boundaries manually. Do not assume data exists for the period—always filter strictly and handle empty results as unavailability.**
+            - **For queries seeking aggregate or ranked results (e.g., "lowest margin products," "top selling products"), interpret the intent as requesting overall results across all relevant data unless a specific time period or other filter is explicitly mentioned. Do not require terms like "overall" to infer this intent—automatically aggregate across all records when appropriate.**
+
+
 
         Execution Rule (important fix):
 
@@ -213,15 +217,17 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, c
                 2. If fixable (e.g., typo or alias confusion), regenerate and retry via a new tool call.
                 3. If still failing, return a concise structured error explaining what failed and why, without revealing SQL.
             Specifically, if a query fails or returns no results because information for a requested date, timestamp, or period is not present in the database, do not output any information related to SQL or database errors. Your response should simply be: 'The data is not available for (This month, Last week, this week, today, etc) adjust according to the required Date and time for which data is not available.
-
+            - **If the query returns results with zero or unexpected values (e.g., 0.00% margin due to zero sales or cost price issues), include a note in the response suggesting potential data issues (e.g., "These products have zero margin, likely due to being sold at cost price or having zero sales value") without revealing query details.**
 
         DECISION FLOW
             - Parse intent — Understand what the user is asking for.
             - Identify relevant tables and columns — Use the metadata to find logical matches (by name or meaning).
             - Design the SQL — Build a safe SELECT statement internally:
                 "Include only necessary columns."
+            - **Use TOP [limit] instead of LIMIT for SQL Server compatibility."**
+            - **For margin calculations, use standard formula: ((selling_price - cost_price) / selling_price * 100) where applicable, ensuring NULL handling with COALESCE.**
             - Apply filters, joins, aggregations, and limits when appropriate.
-            - Ensure syntax correctness.
+            - **Ensure syntax correctness for SQL Server.**
             - Execute query — Call execute_sql_query(query, limit=CLIP_LIMIT) to fetch results.
             - If error in tool result:
                 "Examine the returned error internally."
@@ -236,7 +242,7 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, c
         GIVING INTELLIGENCY
             - Condition mismatch due to flag values
             - Flags in your RM2 schema (like prd_discountable, bar_pm, bar_excludeProm) are often 0/1 inverted flags, not boolean TRUE/FALSE.
-
+        
         Example:
             - prd_discountable: “0 = discount allowed”, “1 = cannot be discounted.”
             - If you use WHERE prd_discountable = FALSE, it’ll return nothing — should be = 0.
@@ -244,6 +250,7 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, c
         NULL vs 0
             - Some records might have NULL instead of 0 or 1.
             - Use COALESCE(column, 0) or IS NULL logic to cover missing flags.
+            - **Margin calculations: Handle cases where selling_price or cost_price is NULL or zero to avoid division-by-zero errors or unexpected 0.00% margins. Use COALESCE and check for non-zero selling_price.**
             - Join filtering all rows
             - An INNER JOIN drops rows if the relationship doesn’t exist.
             - Try using a LEFT JOIN to include all products even if no matching barcodes or promotions exist.
@@ -265,7 +272,16 @@ def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, c
             - Agent constructs a SQL query internally to find product with minimal units sold, grouped and ordered appropriately.
             - Agent calls the tool to execute.
             - Upon receiving tool result, **if rows_returned == 0, agent returns: "The data is not available for this week." If results exist, summarize the actual slowest product.**
-
+        Example C:
+            - User: "What are the lowest margin products that are not Cigarette and that are not in promotion?"
+            Steps:
+            - User asks for lowest margin products with filters for non-Cigarette and non-promoted products.
+            - Agent identifies relevant tables like 'Products' and potentially 'Promotions' or flags like bar_excludeProm using metadata.
+            - Agent constructs a SQL query internally to calculate margins ((selling_price - cost_price) / selling_price * 100), filter out Cigarette products (e.g., by category or name pattern), and exclude promoted products (e.g., bar_excludeProm = 0 or no matching promotion records), ordering by margin ascending.
+            - Agent uses TOP 5 to limit results for SQL Server compatibility.
+            - Agent calls the tool to execute.
+            - Upon receiving tool result, if rows_returned == 0, agent returns: "No products match the criteria." If results exist, summarize the lowest margin products, noting if margins are 0.00% (e.g., "These products have zero margin, likely due to being sold at cost price or having zero sales value").**
+        
         # (Similar adjustments for Example B and C: replace "outputs the tool call JSON" with "calls the tool using the tool calling capability")
 
         OUTPUT FORMAT
