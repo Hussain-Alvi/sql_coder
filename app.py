@@ -3,7 +3,7 @@ import json
 import os
 import time
 from typing import Dict, List
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -104,6 +104,33 @@ async def send_message(message: FrontendSendMessage, request: Request):
     save_chat_history(message.uuid)
 
     return {"response": reply}
+
+
+
+
+# ✅ NEW ENDPOINT: Upload and store audio locally
+@app.post("/upload_audio")
+async def upload_audio(file: UploadFile = File(...)):
+    """
+    Endpoint to receive an audio recording and store it locally.
+    Accepts a recorded audio clip (e.g., WAV, MP3) and saves it in 'uploaded_audios/'.
+    """
+    try:
+        upload_dir = "uploaded_audios"
+        os.makedirs(upload_dir, exist_ok=True)
+
+        file_path = os.path.join(upload_dir, file.filename)
+
+        # Save uploaded audio file
+        with open(file_path, "wb") as buffer:
+            buffer.write(await file.read())
+
+        logger.info(f"Audio file saved: {file_path}")
+        return {"message": "Audio uploaded successfully", "file_path": file_path}
+    except Exception as e:
+        logger.error(f"Error saving audio: {e}")
+        return {"error": str(e)}
+
 
 
 if __name__ == "__main__":
