@@ -114,38 +114,18 @@ async def upload_audio(audio_file: UploadFile = File(...), uuid: str = Form(...)
     """
     try:
         logger.info(f"\n\nAudio Message received:\n{uuid}")
-
-        # Ensure the directory exists
-        temp_audio_dir = settings.get("TEMP_INCOMING_AUDIO_PATH")
-        os.makedirs(temp_audio_dir, exist_ok=True)
-
-        # Ensure the uuid exists in messages history
-        if uuid not in messages_history:
-            messages_history[uuid] = MessagesList()
-
-        # Build unique file name based on message count
-        message_count = len(messages_history[uuid].messages_list) + 1
         input_audio_file_path = os.path.join(
-            temp_audio_dir,
-            f"{uuid}input{message_count}.wav"  # use .wav/.webm depending on upload
-        )
-
+            settings.get("TEMP_INCOMING_AUDIO_PATH"),
+            f"{uuid}_input_{len(messages_history[uuid].messages_list) + 1}.wav",
+        )  # wav/webm
         # Save the uploaded audio file temporarily
         with open(input_audio_file_path, "wb") as f:
             f.write(await audio_file.read())
 
-        logger.info(f"Audio file saved for UUID {uuid}: {input_audio_file_path}")
-
-        # Add to message history (optional trace)
-        messages_history[uuid].add_message(
-            Message(sender=Sender.USER, text=f"[Audio uploaded: {os.path.basename(input_audio_file_path)}]")
-        )
-        save_chat_history(uuid)
-
         return {
             "message": "Audio uploaded successfully",
             "uuid": uuid,
-            "file_path": input_audio_file_path
+            "file_path": input_audio_file_path,
         }
 
     except Exception as e:
