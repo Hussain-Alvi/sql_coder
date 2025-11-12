@@ -8,12 +8,14 @@ from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 from langchain.tools import tool
 
+
 # -------------------- TOOL 1 --------------------
 
 class GetTableInfoInput(BaseModel):
     table_names: List[str] = Field(
         description="List of table names for which schema details (columns, data types, primary keys, foreign keys) are required."
     )
+
 
 @tool("get_table_info", args_schema=GetTableInfoInput, return_direct=False)
 def get_table_info(table_names: List[str]) -> str:
@@ -40,13 +42,13 @@ def load_m_schema_from_csv(csv_path: str, table_names: List[str], logger: loggin
         for t in table_names:
             if t in csv_map:
                 found_schemas[t] = csv_map[t]
-                logger.info(f"✅ Found M-schema for table: {t}")
+                logger.info(f"Found M-schema for table: {t}")
             else:
                 missing_tables.append(t)
-                logger.info(f"ℹ️ No M-schema found in CSV for table: {t}")
+                logger.info(f"No M-schema found in CSV for table: {t}")
 
     except FileNotFoundError:
-        logger.warning(f"⚠️ M-schema CSV file not found at path: {csv_path}")
+        logger.warning(f"M-schema CSV file not found at path: {csv_path}")
         missing_tables = table_names
     except Exception as e:
         logger.error(f"Error loading M-schema CSV: {e}")
@@ -58,9 +60,8 @@ def load_m_schema_from_csv(csv_path: str, table_names: List[str], logger: loggin
 def get_table_info_imp(settings: Dynaconf, logger: logging.Logger,
                        conn_str: str,
                        table_names: List[str]) -> str:
-
     if not table_names or len(table_names) == 0:
-        return "❌ No table names provided."
+        return "No table names provided."
 
     csv_path = settings.TABLE_DETAILS_CSV_PATH
     output = []
@@ -68,7 +69,7 @@ def get_table_info_imp(settings: Dynaconf, logger: logging.Logger,
     csv_schemas, missing_tables = load_m_schema_from_csv(csv_path, table_names, logger)
 
     for table, schema in csv_schemas.items():
-        output.append(f"🔹 M-Schema for {table}:\n{schema.strip()}")
+        output.append(f"M-Schema for {table}:\n{schema.strip()}")
 
     if not missing_tables:
         return "\n\n".join(output)
@@ -126,7 +127,9 @@ def get_table_info_imp(settings: Dynaconf, logger: logging.Logger,
 
             ddl_lines = []
             for col_name, data_type, is_nullable, char_len in columns:
-                type_str = f"{data_type}({char_len})" if char_len and char_len > 0 and data_type in ["nvarchar", "varchar", "char"] else data_type
+                type_str = f"{data_type}({char_len})" if char_len and char_len > 0 and data_type in ["nvarchar",
+                                                                                                     "varchar",
+                                                                                                     "char"] else data_type
                 null_str = "NULL" if is_nullable == "YES" else "NOT NULL"
                 ddl_lines.append(f"    {col_name} {type_str} {null_str}")
 
@@ -143,7 +146,7 @@ def get_table_info_imp(settings: Dynaconf, logger: logging.Logger,
 
     except Exception as e:
         logger.error(f"Error fetching table info: {e}")
-        return f"❌ Failed to get schema info. Error: {e}"
+        return f"Failed to get schema info. Error: {e}"
 
 
 # -------------------- TOOL 2 --------------------
@@ -151,6 +154,7 @@ def get_table_info_imp(settings: Dynaconf, logger: logging.Logger,
 class ExecuteSQLQueryInput(BaseModel):
     query: str = Field(description="The SQL query to be executed on the relational database.")
     limit: Optional[int] = Field(default=5, description="Maximum number of rows to return.")
+
 
 @tool("execute_sql_query", args_schema=ExecuteSQLQueryInput, return_direct=False)
 def execute_sql_query(query: str, limit: int = 5) -> str:
@@ -163,7 +167,6 @@ def execute_sql_query(query: str, limit: int = 5) -> str:
 
 def execute_sql_query_imp(settings: Dynaconf, logger: logging.Logger,
                           conn_str: str, query: str, limit: int = 5) -> Dict[str, Any]:
-
     try:
         if limit is None:
             limit = 20
@@ -178,7 +181,8 @@ def execute_sql_query_imp(settings: Dynaconf, logger: logging.Logger,
         cursor.execute(query)
 
         if cursor.description is None:
-            return {"status": "success", "message": "✅ Query executed successfully. No rows returned.", "rows_returned": 0, "data": []}
+            return {"status": "success", "message": "Query executed successfully. No rows returned.",
+                    "rows_returned": 0, "data": []}
 
         columns = [col[0] for col in cursor.description]
         rows = cursor.fetchall()
@@ -188,13 +192,14 @@ def execute_sql_query_imp(settings: Dynaconf, logger: logging.Logger,
 
         data = [dict(zip(columns, row)) for row in rows]
 
-        result = {"status": "success", "message": "✅ Query executed successfully.", "rows_returned": total_rows, "data": data}
+        result = {"status": "success", "message": "Query executed successfully.", "rows_returned": total_rows,
+                  "data": data}
 
         if clipped:
-            result["note"] = f"⚠️ {total_rows} rows received. Showing first {limit} rows only."
+            result["note"] = f"{total_rows} rows received. Showing first {limit} rows only."
 
         return result
 
     except Exception as e:
         logger.error(f"SQL Execution Error: {e}")
-        return {"status": "error", "message": f"❌ Query failed with error: {str(e)}", "rows_returned": 0, "data": []}
+        return {"status": "error", "message": f"Query failed with error: {str(e)}", "rows_returned": 0, "data": []}

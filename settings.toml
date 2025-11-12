@@ -11,7 +11,6 @@ SERVER_FILES_IP = "http://0.0.0.0:5011"
 
 
 TABLE_DETAILS_CSV_PATH = "data/files/queries/table_details.csv"
-CLIENT_SQL_CSV_PATH = "data/files/queries/client_sql.csv"
 METADATA_PATH = "data/files/queries/tables_metadata.txt"
 
 [production]

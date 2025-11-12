@@ -16,40 +16,28 @@ from langchain.agents.format_scratchpad.openai_tools import (format_to_openai_to
 from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
 
 from data_validations.data_models import MessagesList
-from included_tables.tables import TABLE_LIST
 from agent_tools.tools import (
     get_table_info,
     execute_sql_query,
     get_table_info_imp,
     execute_sql_query_imp,
 )
-
-today = date.today()
-current_date = today.isoformat()
+from included_tables.tables import TABLE_LIST
 
 
 def sql_agent(settings: Dynaconf, logger: logging.getLogger, db_conn_str: str, conversation: MessagesList) -> str:
     """
     The main function for the SQL agent.
     """
-    start_time = time.perf_counter()
-        # Early exit for greetings or non-SQL input
-    if (
-        isinstance(conversation, str)
-        and conversation.strip().lower() in ["hi", "hello", "hey", "good morning", "good evening"]
-    ) or (
-        hasattr(conversation, "messages") 
-        and len(conversation.messages) == 1 
-        and conversation.messages[0].text.strip().lower() in ["hi", "hello", "hey"]
-    ):
-        logger.info("Received greeting, skipping SQL prompt.")
-        return "👋 Hi there! I can help you explore or query the database. Try asking things like 'Show top 5 products by price'."
-
     try:
+        start_time = time.perf_counter()
         os.environ["GROQ_API_KEY"] = settings.get("GROQ_API_KEY")
-        global TABLE_LIST, current_date
+        current_date = date.today().isoformat()
 
-        llm = ChatGroq(model_name="meta-llama/llama-4-maverick-17b-128e-instruct")
+        # "gpt-5" | "gpt-4.1" | "gpt-3.5-turbo" | "gpt-4-0125-preview"
+        # llm = ChatOpenAI(model="gpt-4.1", temperature=1)
+        # "meta-llama/llama-4-maverick-17b-128e-instruct" |  "openai/gpt-oss-120b"
+        llm = ChatGroq(model_name="openai/gpt-oss-120b")
 
         tools = [
             get_table_info,
@@ -85,29 +73,39 @@ Conversation:
                 | agent_prompt
                 | llm_with_tools
                 | OpenAIToolsAgentOutputParser()
+                # OpenAIToolsAgentOutputParser()  # PydanticToolsParser(tools=[tools list...])
+                # parser has applied parse_ai_message_to_tool_action method
         )
 
         prompt_input = {
-            "query": "",
-            "table_names": "",
             "conversation": conversation,
             "current_date": current_date,
             "table_list": "\n".join(TABLE_LIST),
             "intermediate_steps": []
         }
+        # agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+        # output = agent_executor.invoke(prompt_input)
+        # logger.info(output)
 
-
+        testing_prompt = agent_prompt.format(**{
+            "conversation": prompt_input["conversation"],
+            "table_list": prompt_input["table_list"],
+            "current_date": prompt_input["current_date"],
+            "agent_scratchpad": format_to_openai_tool_messages(prompt_input["intermediate_steps"])
+        })
         output = agent.invoke(prompt_input)
         logger.info(output)
 
-        while not isinstance(output, AgentFinish):
+        run = True
+        while not isinstance(output, AgentFinish) and run:
             for selected_tool in output:
                 logger.info("Tool call:     --->    " + selected_tool.log.strip())
                 if isinstance(selected_tool, ToolAgentAction):
                     name = selected_tool.tool
                     tool_input = selected_tool.tool_input
 
-                    tool_output = ""
+                    # if name == "search_relevant_queries":
+                    # tool_output = search_relevant_queries_imp(settings, logger, **tool_input)
                     if name == "get_table_info":
                         tool_output = get_table_info_imp(settings, logger, db_conn_str, **tool_input)
                     elif name == "execute_sql_query":
@@ -118,13 +116,22 @@ Conversation:
 
                     logger.info("Observation:   --->    " + str(tool_output))
                     prompt_input["intermediate_steps"].append((
+                        # AgentAction(tool=name, tool_input=tool_input, log=selected_tool.log),
                         selected_tool, tool_output
                     ))
 
+            testing_prompt = agent_prompt.format(**{
+                "conversation": prompt_input["conversation"],
+                "table_list": prompt_input["table_list"],
+                "current_date": prompt_input["current_date"],
+                "agent_scratchpad": format_to_openai_tool_messages(prompt_input["intermediate_steps"])
+            })
             output = agent.invoke(prompt_input)
             logger.info(output)
 
+            # run = False
         final_output = output.messages[0].content
+
         end_time = time.perf_counter()
         logger.info(f"SQL Agent completed in {end_time - start_time:.2f}s")
         return final_output
