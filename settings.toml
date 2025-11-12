@@ -5,9 +5,9 @@ TEMP_INCOMING_AUDIO_PATH = "data/files/audios/temp_audios"
 TEMP_OUTGOING_AUDIO_PATH = "data/files/audios/temp_audios"
 CHAT_HISTORY_PATH = "data/files/chat_history"
 AUDIO_STREAM_SAMPLE_RATE_HERTZ = 16000
-SERVER_IP = "0.0.0.0"
+SERVER_IP = "127.0.0.1"
 SERVER_PORT = 5011
-SERVER_FILES_IP = "http://localhost:5011"
+SERVER_FILES_IP = "http://0.0.0.0:5011"
 
 
 TABLE_DETAILS_CSV_PATH = "data/files/queries/table_details.csv"

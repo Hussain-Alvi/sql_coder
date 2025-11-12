@@ -3,10 +3,8 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 
-import pyodbc
 from dotenv import load_dotenv
 from dynaconf import Dynaconf
-
 
 def get_settings() -> Dynaconf:
     """Create and return dynaconf setting object."""
