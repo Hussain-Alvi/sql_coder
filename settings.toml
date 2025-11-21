@@ -10,8 +10,7 @@ SERVER_PORT = 5011
 SERVER_FILES_IP = "http://0.0.0.0:5011"
 
 
-TABLE_DETAILS_CSV_PATH = "data/files/queries/table_details.csv"
-METADATA_PATH = "data/files/queries/tables_metadata.txt"
+BANK_ISLAMIC_METADATA = "data/files/queries/BankIslami_FAQs.txt"
 
 [production]
 #SERVER_IP = "0.0.0.0"

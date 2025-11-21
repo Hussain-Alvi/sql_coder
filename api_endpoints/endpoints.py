@@ -32,7 +32,7 @@ async def send_uuid(data: UUIDRequest, request: Request):
     if data.uuid not in messages_history:
         messages_history[data.uuid] = MessagesList()
 
-    welcome_message = "Hi! I’m your SQL assistant. Tell me what data you’d like to see, and I’ll query the database for you."
+    welcome_message = "میں آپ کا BankIslami چیٹ اسسٹنٹ ہوں۔ آپ مجھ سے بینک کی معلومات حاصل کر سکتے ہیں، اور میں آپ کی مدد کروں گا۔"
     messages_history[data.uuid].add_message(Message(sender=Sender.ASSISTANT, text=welcome_message))
 
     return {"welcome_message": welcome_message}
