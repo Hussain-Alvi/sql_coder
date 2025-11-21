@@ -1,0 +1,64 @@
+Q-1: What is the Vision of Bank Islami?
+Ans: The vision of BankIslami is promoting global economic prosperity based on Islamic financial system.
+
+Q-2: What is the mission of Bank Islami?
+Ans: The Mission of BankIslami is Saving Humanity from Riba by offering Shariah compliant, customer-centric, innovative financial solutions and creating value for our stakeholders while       upholding social responsibility and transparency.
+
+Q-3: Minimun Balance to open Account in BankIslami?
+Ans: A minimum balance of Rs. 100/- only to open the account.
+
+Q-4: Cost of getting account statement?
+Ans: You can get Free Account statement.
+
+Q-5: How do I sign up for internet/mobile banking?
+Ans: You can sign up yourself once your bank account is active and a debit card has been issued.
+
+Q-6: Will Zakat be deducted from my account?
+Ans: Yes, Zakat is deductible on all Savings accounts unless a Zakat Declaration Form (CZ50) is uploaded to the portal before the 1st of Shabaan.
+
+Q-7: How can I update my personal information (e.g., mobile number, email address)?
+Ans: You need to visit your nearest BankIslami branch to update personal information in their records.
+
+Q-8: What are the limits for Digital Accounts?
+Ans: For an Islami Asaan Digital Account, the monthly debit limit is PKR 1,000,000/- and the total credit balance limit is PKR 1,000,000/-.
+
+Q-9: How does "One Touch Banking" work?
+Ans: Customers with registered biometric records can conduct over-the-counter and ATM transactions using only their thumbprint, without needing a physical card or PIN for branch transactions. 
+
+Q-10: How do I activate my new debit card?
+Ans: Debit cards are deactivated by default. You must call BankIslami Phone Banking at (021) 111-475-264 from your registered mobile number to activate it after verification.
+
+Q-11: What if my card is lost or stolen?
+Ans: Immediately call the BankIslami Phone Banking number (021) 111-475-264 to report it lost/stolen and request a replacement. You can also block the card via the mobile app or internet banking.
+
+Q-12: How do I change my Card PIN?
+You can change your card PIN at any BankIslami ATM by inserting your card and using the biometric verification device.
+
+Q-13: Do I need to visit my selected branch for document verification?
+Ans: You are not required to visit any BankIslami branch for physical verification of your documents.
+
+Q-14: How can I download the BankIslami on my smart-phone?
+Ans: BankIslami can be downloaded from Apple Store or Google Play Store on your smartphones by simply typing BankIslami in the search bar.
+
+Q-15: What if I forget my Password?
+Ans: You can reset your password through BankIslami by using “Forgot password” option and then you need to visit any BankIslami Branch or contact 111-ISLAMI (111-475-264) for activation of services.
+
+Q-16: What if I enter the wrong password?
+Ans: If you enter the wrong password consecutively (3) times, your services will be de-activated. For Re-activation of services you need to visit any BankIslami Branch or contact 111-ISLAMI (111-475-264) from your registered contact number.
+
+Q-17: Is BankIslami service safe to use?
+Ans: Yes! BankIslami is a safe and secure way of making payments. No information is stored on your mobile phone which means that your CNIC & Password is never exposed even if your mobile handset falls in the wrong hands. All transactions are secured with Advanced Encryption Methodologies. In addition, to conduct any non-beneficiary transaction on BankIslami; an OTP is sent to your registered Mobile Number/email or on both.
+
+Q-18: Is there any transaction limit?
+Ans: Yes! Funds transfer limit per transaction is Rs. 100,000/- & Rs.500,000/- per day. These limits may change as per Bank discretion. BankIslami will update any change in its limit via social media channels
+
+Q-19: What services can I use in BankIslami?
+Ans: BankIslami brings an array of convenient, secure, and personalized services at your fingertips. You can easily perform the following services: Check your Account Balances View transaction details TRANSFERS: Funds transfer to any bank account in Pakistan PAYMENTS: Pay your utility/bills and Mobile Top-ups Change your Mobile App password/Login PIN Locate your nearest BankIslami Branch/ATM SMS activation Debit Card request
+ 
+Q-20: What if I have the CNIC and Password but OTP is not working?
+Ans: "You will not be able to login to BankIslami as OTP (One Time Password) is a key security feature to login and to add beneficiary for executing the financial transactions (Funds Transfers and Payments). In case you do not receive the OTP (One Time Password) on your registered Mobile number, type MNP in text messages and send it to ‘8382’.You will get a response “Your number has been ported successfully” If you are still not receiving OTP on your Registered Mobile number / Email address it will be due to reasons that the same is not being maintained with the bank. Please call 021-111475264 for more understanding or may visit your nearest branch.
+ 
+
+
+
+
