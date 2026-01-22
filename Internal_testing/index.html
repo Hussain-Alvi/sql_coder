@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>Voice SQL ChatBot</title>
+</head>
+<body>
+<div class="chat-container">
+    <h1>Voice SQL ChatBot</h1>
+    <div class="chat-box" id="chat-box"></div>
+    <div class="input-container">
+        <textarea id="message-input" placeholder="Type your message..." rows="3"></textarea>
+        <button id="send-button">Send</button>
+        <button id="mic-button" class="mic-button">🎤</button>
+        <audio id="audio-player" controls style="display: none;"></audio>
+
+    </div>
+</div>
+
+<script>
+	const BASE_URL = "http://localhost:5011";
+    //const BASE_URL = "https://rm2pgoapi.appinsnap.com:4433"; // Base URL defined once
+    // const BASE_URL = "http://192.168.0.60/5011"; // Update BASE_URL to use the /api path
+
+    const chatBox = document.getElementById("chat-box");
+    const messageInput = document.getElementById("message-input");
+    const sendButton = document.getElementById("send-button");
+    const micButton = document.getElementById("mic-button");
+    const audioPlayer = document.getElementById("audio-player");
+
+
+    let isRecording = false;
+    let mediaRecorder;
+    let audioChunks = [];
+    const uuid = generateUUID(); // Generate a new UUID on page load
+
+    // Function to generate a UUID
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    sendButton.addEventListener("click", sendMessage);
+    micButton.addEventListener("click", toggleRecording);
+
+    // Send the UUID when the page is loaded
+    document.addEventListener("DOMContentLoaded", () => {
+        fetch(`${BASE_URL}/send_uuid`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ uuid: uuid })
+        })
+        .then(response => response.json())
+        .then(data => {
+            addMessage(data.welcome_message, "bot");
+        })
+        .catch(error => {
+            console.error('Error sending UUID:', error);
+        });
+    });
+
+
+    function sendMessage() {
+        const userMessage = messageInput.value;
+        if (userMessage.trim() === "") return;
+        addMessage(userMessage, "user");
+        messageInput.value = "";
+
+        // Send the message to the FastAPI endpoint
+        fetch(`${BASE_URL}/send_message`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({text: userMessage, uuid: uuid})
+        })
+            .then(response => response.json())
+            .then(data => {
+                addMessage(data.response, "bot");
+            })
+            .catch(error => {
+                console.error('Error sending message:', error);
+            });
+    }
+
+    function addMessage(message, type) {
+        const messageElement = document.createElement("div");
+        messageElement.classList.add("message", type);
+        messageElement.innerText = `${message}`;
+        chatBox.appendChild(messageElement);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function toggleRecording() {
+        if (isRecording) {
+            mediaRecorder.stop();
+            micButton.textContent = "🎤"; // Change back to mic icon
+            isRecording = false;
+        } else {
+            const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = []; // Reset audio chunks for new recording
+
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                try {
+                    const formData = new FormData();
+                    const audioBlob = new Blob(audioChunks, {type: 'audio/wav'}); // Ensure this matches FastAPI expectations
+                    formData.append('audio_file', audioBlob, 'audio.wav');
+                    formData.append('uuid', uuid); // Include UUID
+
+                    addMessage("Audio message sent!", "user"); // Optional
+
+                    const response = await fetch(`${BASE_URL}/send_audio`, {
+                        method: 'POST',
+                        body: formData  // Ensure form data is being sent
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Error sending audio: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    addMessage(data.input_audio_text, "user");
+                    addMessage(data.output_audio_text, "bot");
+
+                    // // Set up the audio player with the audio file
+                    // audioPlayer.src = data.audio_url;  // Use the audio URL returned from the API
+                    // audioPlayer.style.display = "none";  //    block: Make the player visible, none:hide
+                    // audioPlayer.play();  // Automatically play the audio
+                } catch (error) {
+                    console.error('Error sending audio:', error);
+                    addMessage("Error sending audio!", "error");
+                }
+            };
+
+            mediaRecorder.start();
+            micButton.textContent = "🛑"; // Indicate recording state
+            isRecording = true;
+        }
+    }
+</script>
+</body>
+</html>
