@@ -9,7 +9,7 @@ __pycache__
  Ignore dynaconf secret files
 .secrets.*
  Ignore everything inside data by default
-data/**
+
 
  Keep the prompts folder and its contents
 !data/files/prompts/
