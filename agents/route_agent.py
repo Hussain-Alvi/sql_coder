@@ -2,124 +2,152 @@ import logging
 import os
 from pathlib import Path
 from dynaconf import Dynaconf
-from groq import Groq
 
-# Internal Imports
-from data_models.data_models import MessagesList
-from agent_tools.websearch import web_search_tool
+# --- SPECIFIC IMPORTS ---
+from langchain_core.agents import AgentFinish
+from langchain.agents.output_parsers.tools import ToolAgentAction
+from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain.agents.format_scratchpad.openai_tools import (
+    format_to_openai_tool_messages,
+)
+from langchain.agents.output_parsers.openai_tools import (
+    OpenAIToolsAgentOutputParser,
+)
+from langchain_core.tools import StructuredTool
+
+# --- IMPORTING TOOLS ---
+# Assuming websearch and memory are valid StructuredTools or Callables from your project
 from agent_tools.memory import thread_memory_manager
+from agent_tools.websearch import web_search_tool
 
-# Import the DBAgent
-from agents import db_agent
-
-logger = logging.getLogger(__name__)
+# --- IMPORTING YOUR DB AGENT ---
+from agents.db_agent import db_agent 
 
 def router_agent(
     settings: Dynaconf,
     logger: logging.Logger,
-
-    conversation: MessagesList,
-    thread_id: str
+    user_query: str
 ) -> str:
     """
-    Router Agent (Orchestrator).
-    Capabilities:
-    1. Manages Thread Memory (Read/Write).
-    2. Classifies Intent (DB vs Web vs Reset).
-    3. Executes Web Search Tool directly.
-    4. Delegates DB tasks to the 'db_agent'.
+    Main Router/Decision Agent.
+    Role: Analyzes user intent and routes tasks to Web Search, Memory, or the DB Specialist.
     """
     try:
-        # Normalize Input
-        conv_text = str(conversation).strip()
-        user_message = " ".join(conv_text.split())[-2000:] # Take last portion for context
+        # 1. Configure Environment
+        os.environ["GROQ_API_KEY"] = settings.get("GROQ_API_KEY")
         
-        GROQ_API_KEY = settings.get("GROQ_API_KEY")
-        if not GROQ_API_KEY:
-            return "Configuration Error: GROQ_API_KEY missing."
+        # 2. Define the Wrapper for the DB Agent
+        # We wrap the db_agent function so it matches the signature expected by the LLM tool (single string input)
+        def query_db_specialist(query: str) -> str:
+            """
+            Input should be a specific question about data, records, or sql requirements.
+            """
+            logger.info(f"🔄 Routing to DB Agent with query: {query}")
+            return db_agent(
+                settings=settings,
+                logger=logger,
+                query_context=query
+            )
 
-        client = Groq(api_key=GROQ_API_KEY)
+        # Create the StructuredTool definition
+        db_agent_tool = StructuredTool.from_function(
+            func=query_db_specialist,
+            name="db_specialist_agent",
+            description="Use ONLY when the user asks about database records, SQL, internal data, or verifying specific user details."
+        )
+
+        # 3. Aggregate Tools
+        # We combine your imported tools with our newly created sub-agent tool
+        tools = [web_search_tool, thread_memory_manager, db_agent_tool]
         
+        # Create a mapping for easy execution in the loop
+        tool_map = {tool.name: tool for tool in tools}
+
+        # 4. Configure LLM
+        llm = ChatGroq(
+            temperature=0,
+            model_name="openai/gpt-oss-20", # Ensure this model name is valid in your Groq context
+        )
+        
+        # Bind tools to LLM
+        llm_with_tools = llm.bind_tools(tools)
+
+        # 5. Load System Prompt
         try:
             prompt_path = Path("router_system_prompt.xml")
             if prompt_path.exists():
-                # We just read the text. We do NOT need to inject metadata anymore.
-                system_instruction = prompt_path.read_text(encoding="utf-8")
+                system_prompt = prompt_path.read_text(encoding="utf-8")
             else:
-                system_instruction = "You are a query router. Options: [sql_db, web_search, reset_memory]."
-
+                # Fallback if file missing
+                system_prompt = "You are a helpful routing assistant. Use the db_specialist_agent for database queries."
         except Exception as e:
             logger.error(f"Error loading Router prompt: {str(e)}")
-            return "System Error: Internal Error in Router."
+            system_prompt = "You are a helpful assistant."
 
-        messages = [
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": f"User Query: \"{user_message}\""}
-        ]
+        # 6. Define the Agent Chain
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", "{input}"),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
+        ])
 
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-20b", # Smaller, faster model for routing
-            messages=messages,
-            temperature=0.0,
-            max_tokens=10
+        agent = (
+            {
+                "input": lambda x: x["input"],
+                "agent_scratchpad": lambda x: format_to_openai_tool_messages(x["intermediate_steps"]),
+            }
+            | prompt
+            | llm_with_tools
+            | OpenAIToolsAgentOutputParser()
         )
 
-        decision = response.choices[0].message.content.strip().lower()
-        logger.info(f"🧠 Router Decided: {decision}")
+        # 7. Execution Loop (Best Practice Manual Loop)
+        prompt_input = {
+            "input": user_query,
+            "intermediate_steps": []
+        }
 
-        final_response = ""
+        # Initial Invocation
+        output = agent.invoke(prompt_input)
 
-        # -------------------------------
-        # 3. Routing & Execution
-        # -------------------------------
-        
-        # CASE A: Memory Reset
-        if "reset" in decision or "memory" in decision:
-            thread_memory_manager.invoke({"thread_id": thread_id, "action": "reset"})
-            final_response = "I have reset the conversation memory. We can start fresh."
-
-        # CASE B: Web Search (Router handles directly)
-        elif "web" in decision or "search" in decision:
-            logger.info("🌍 Delegating to Web Search Tool")
-            # Using the web_search_tool directly as requested
-            search_result = web_search_tool.invoke(user_message)
+        # Loop until AgentFinish is reached
+        while not isinstance(output, AgentFinish):
             
-            # Synthesize answer (Optional: You can return raw result or summarize)
-            # For simplicity, returning the search result, or you could add a small summarization call here.
-            final_response = f"Here is what I found on the web:\n{search_result}"
+            # Iterate through actions requested by the LLM
+            for action in output:
+                if not isinstance(action, ToolAgentAction):
+                    continue
 
-        # CASE C: Database Query (Delegate to DBAgent)
-        elif "sql" in decision or "db" in decision or "database" in decision:
-            logger.info("🗄️ Delegating to DBAgent")
-            final_response = db_agent(
-                settings=settings,
-                logger=logger,
-                db_conn_str=str,
-                query_context=user_message,
-                thread_id=thread_id
-            )
-            
-        # CASE D: Fallback (Default to DB if unsure, or Web)
-        else:
-            # Fallback logic: Default to DBAgent
-            final_response = db_agent(
-                settings=settings,
-                logger=logger,
-                query_context=user_message,
-                thread_id=thread_id
-            )
+                tool_name = action.tool
+                tool_input = action.tool_input
+                
+                logger.info(f"🤖 Router executing tool: {tool_name}")
 
-        # -------------------------------
-        # 4. Memory Management (WRITE)
-        # -------------------------------
-        thread_memory_manager.invoke({
-            "thread_id": thread_id, 
-            "action": "write", 
-            "content": f"User: {user_message}\nAI: {final_response}"
-        })
+                # Execute the specific tool
+                if tool_name in tool_map:
+                    try:
+                        selected_tool = tool_map[tool_name]
+                        # Handling input: if tool_input is a dict, unpack it, else pass directly
+                        if isinstance(tool_input, dict):
+                            tool_output = selected_tool.run(tool_input)
+                        else:
+                            tool_output = selected_tool.run(tool_input)
+                    except Exception as tool_err:
+                        tool_output = f"Error executing tool {tool_name}: {str(tool_err)}"
+                        logger.error(tool_output)
+                else:
+                    tool_output = f"Error: Unknown tool '{tool_name}'"
 
-        return final_response
+                # Append result to intermediate steps
+                prompt_input["intermediate_steps"].append((action, tool_output))
+
+            # Re-invoke the agent with new history
+            output = agent.invoke(prompt_input)
+
+        # 8. Return Final Output
+        return output.return_values["output"]
 
     except Exception as e:
         logger.error("ROUTER AGENT FAILURE", exc_info=True)
-        return "System Error: Unable to process request in Router."
+        return "I encountered a critical error while processing your request."
