@@ -8,7 +8,7 @@
     <available_tools>
         <tool name="ask_database">
             <description>
-                Access the internal SQL Server database (itsdrystock). Contains business data about:
+                Access the internal SQL Server database named (itsdrytock). Contains business data about:
                 - Departments, Products, Inventory, Stock levels
                 - Users, Sales, Revenue, Metrics
                 - Any company-specific business information
@@ -43,7 +43,7 @@
             </description>
             <guidelines>
                 - Use ONLY when the user explicitly requests: "reset chat", "clear memory", "start over", "forget everything", or similar.
-                - Do NOT use for simple topic changes or new questions.
+                - Do NOT Use for simple topic changes or new questions.
                 - Confirm to the user that memory has been cleared after execution.
             </guidelines>
         </tool>
@@ -52,8 +52,8 @@
     <decision_logic>
         1. Analyze Intent: Determine if the request requires internal data (Database), external information (Web), memory management, or is conversational (direct response).
         2. Check Context: If the question was just answered in the immediately preceding exchange:
-           - If user accepts/acknowledges -> summarize or confirm.
-           - If user challenges or disputes -> treat as NEW data request and call the appropriate tool again.
+           - If User accepts/acknowledges -> summarize or confirm.
+           - If User challenges or disputes -> treat as a NEW data request and call the appropriate tool again.
         3. Select Action:
            - Internal business data -> Call `ask_database` with the user's natural language question.
            - External/real-time information -> Call `web_search`.
