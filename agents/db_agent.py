@@ -15,10 +15,12 @@ from langchain.agents.output_parsers.openai_tools import (
 
 # Internal Imports
 from data_models.data_models import MessagesList
+
 from agent_tools.sql import (
     execute_sql_query,
     execute_sql_query_imp
 )
+
 
 def get_tables_metadata(settings: Dynaconf):
     """Reads and returns the table metadata from the specified file."""
@@ -29,71 +31,70 @@ def get_tables_metadata(settings: Dynaconf):
     except Exception as e:
         return f"Error loading metadata: {str(e)}"
 
-def db_agent(
-    settings: Dynaconf,
-    logger: logging.Logger,
-    db_conn_str: str,
-    query_context: str,  # The specific user query forwarded by the Router
-    thread_id: str
+
+def sql_agent(
+        settings: Dynaconf,
+        logger: logging.Logger,
+        db_conn_str: str,
+        conversation: MessagesList,
+        thread_id: str
 ) -> str:
     """
-    Specialized SQL/DB Agent.
-    Role: Receives a task from the Router, executes SQL against the DB, and returns the answer.
+    Pure SQL agent. No routing, no web search.
+    Only capability: Generate and execute SQL based on conversation and metadata.
     """
     try:
-        # 1. Prepare Context
+
+        conv_text = str(conversation).strip()
+        normalized_user_message = " ".join(conv_text.split())
+
         metadata = get_tables_metadata(settings)
-        
-        # 2. Initialize LLM
-        # Using a model capable of complex SQL generation
+
         os.environ["GROQ_API_KEY"] = settings.get("GROQ_API_KEY")
+
         llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0)
-        
-        # 3. Define Tools (ONLY SQL Related)
+
         tools = [execute_sql_query]
 
         try:
-        # Read the DB Agent XML file
-            prompt_path = Path("db_system_prompt.xml")
-        
-            if prompt_path.exists():
-                xml_template = prompt_path.read_text(encoding="utf-8")
+            system_prompt = Path("db_system_prompt.xml").read_text(encoding="utf-8")
+        except FileNotFoundError:
+            logger.error("db_system_prompt.xml not found.")
+            return "System configuration error: Prompt file missing."
 
-                system_prompt = xml_template.replace("{metadata}", metadata)
-            else:
-                logger.error("db_system_prompt.xml not found!")
-                return "System Error: Configuration file missing."
+        # --- FIX STARTS HERE ---
+        # 1. Define the template string with placeholders (do not f-string the conversation here)
+        user_template = "Session ID: {thread_id}\nConversation:\n{conversation}"
 
-        except Exception as e:
-            logger.error(f"Error loading DB prompt: {str(e)}")
-            return "System Error: Failed to load agent configuration."
-
-    # ---------------------------------------------------------
-    
         agent_prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
-            ("user", "{input}"),
+            ("user", user_template), # LangChain safely injects vars here
             MessagesPlaceholder(variable_name="agent_scratchpad")
         ])
+        # --- FIX ENDS HERE ---
 
         llm_with_tools = llm.bind_tools(tools)
 
         agent = (
-            {
-                "input": lambda x: x["input"],
-                "agent_scratchpad": lambda x: format_to_openai_tool_messages(x["intermediate_steps"]),
-            }
-            | agent_prompt
-            | llm_with_tools
-            | OpenAIToolsAgentOutputParser()
+                {
+                    # 2. Convert conversation to string specifically for the prompt injection
+                    "conversation": lambda x: str(x["conversation"]),
+                    "thread_id": lambda x: x["thread_id"],
+                    "metadata": lambda x: x["metadata"],
+                    "agent_scratchpad": lambda x: format_to_openai_tool_messages(x["intermediate_steps"]),
+                }
+                | agent_prompt
+                | llm_with_tools
+                | OpenAIToolsAgentOutputParser()
         )
 
-        # 5. Execution Loop
         prompt_input = {
-            "input": query_context,
+            "conversation": conversation,
+            "thread_id": thread_id,
+            "metadata": metadata,
             "intermediate_steps": []
         }
-        
+
         output = agent.invoke(prompt_input)
 
         while not isinstance(output, AgentFinish):
@@ -103,25 +104,27 @@ def db_agent(
 
                 tool_name = action.tool
                 tool_input = action.tool_input
-                
-                logger.info(f"💾 DBAgent executing: {tool_name}")
+
+                logger.info(f"🛠️ Agent executing: {tool_name}")
 
                 if tool_name == "execute_sql_query":
                     safe_input = tool_input.copy() if isinstance(tool_input, dict) else {}
-                    
-                    # Ensure query exists
-                    if "query" not in safe_input:
-                        safe_input["query"] = query_context
 
-                    # Execute the implementation directly
+                    safe_input.pop("thread_id", None)
+                    safe_input.pop("metadata", None)
+
+                    if "query" not in safe_input:
+                        safe_input["query"] = normalized_user_message
+
                     tool_output = execute_sql_query_imp(
                         settings=settings,
                         logger=logger,
                         conn_str=db_conn_str,
                         **safe_input
-                   )
+                    )
                 else:
-                    tool_output = f"Error: DBAgent only supports SQL tools. Unknown tool: {tool_name}"
+                    tool_output = {"status": "error",
+                                   "message": f"This agent is restricted to SQL operations only. Unknown tool: {tool_name}"}
 
                 prompt_input["intermediate_steps"].append((action, tool_output))
 
@@ -130,5 +133,8 @@ def db_agent(
         return output.return_values["output"]
 
     except Exception as e:
-        logger.error("DB AGENT FAILURE", exc_info=True)
-        return "I encountered an error while trying to query the database."
+        logger.error("SQL AGENT FAILURE", exc_info=True)
+        if "Parsing failed" in str(e):
+            return "I retrieved the data successfully but couldn't format the answer correctly. Please try again."
+
+        return "I encountered an internal system error while processing your request. Please try again."

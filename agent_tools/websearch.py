@@ -1,5 +1,3 @@
-# tools.py
-
 import logging
 from typing import Dict, Any, Optional
 from langchain.tools import tool
@@ -13,13 +11,13 @@ class WebSearchInput(BaseModel):
     max_results: Optional[int] = Field(default=3, description="Max results (1-5)")
         
 @tool("web_search", args_schema=WebSearchInput, return_direct=False)
-def web_search_tool(query: str, max_results: int = 3) -> Dict[str, Any]:
+def web_search_tool(query: str) -> Dict[str, Any]:
     """
     Search the web using Groq's compound model for real-time information.
     Returns short, concise answers.
     """
     try:
-        # Get settings from environment (same as SQL agent)
+
         from dynaconf import Dynaconf
         settings = Dynaconf(
             settings_files=['settings.toml', '.secrets.toml'],
@@ -53,15 +51,12 @@ def web_search_tool(query: str, max_results: int = 3) -> Dict[str, Any]:
         
         result_text = response.choices[0].message.content
         
-        # Simple regex to extract any website domains mentioned in the response
         websites_found = []
         import re
         
-        # Look for website patterns in the text
         website_pattern = r'\b(?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\.[a-zA-Z]{2,})?\b'
         found_sites = re.findall(website_pattern, result_text, re.IGNORECASE)
         
-        # Filter out common non-website words and take unique sites
         non_website_words = ['http', 'https', 'com', 'org', 'net', 'www']
         for site in found_sites:
             site_lower = site.lower()
@@ -70,10 +65,8 @@ def web_search_tool(query: str, max_results: int = 3) -> Dict[str, Any]:
                 len(site_lower) > 4):
                 websites_found.append(site_lower)
         
-        # Take only unique websites
         websites_found = list(set(websites_found))[:2]
         
-        # Return same format as before for compatibility
         return {
             "status": "success",
             "query": query,
