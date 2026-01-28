@@ -1,7 +1,6 @@
 from enum import Enum
 from typing import List
-from pydantic import BaseModel
-
+from pydantic import BaseModel, Field
 
 class UUIDRequest(BaseModel):
     uuid: str
@@ -19,7 +18,7 @@ class Message(BaseModel):
     sender: Sender
 
 class MessagesList(BaseModel):
-    messages_list: List[Message] = []
+    messages_list: List[Message] = Field(default_factory=list)
 
     def add_message(self, message: Message):
         """Add a new message to the messages list."""

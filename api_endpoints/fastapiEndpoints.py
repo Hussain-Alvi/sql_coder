@@ -1,73 +1,44 @@
 import json
 import os
 import time
-from typing import Dict
 from fastapi import APIRouter, UploadFile, File, Form
+
+# Internal Imports
 from agents.router_agent import master_router_agent
-from data_models.data_models import FrontendSendMessage, MessagesList, Message, Sender, UUIDRequest
+from data_models.data_models import FrontendSendMessage, Message, Sender, UUIDRequest
 from utilities.utils import get_settings, get_logger, get_db_connection
+from services.chat_memory_service import ChatMemoryService
 
 router = APIRouter()
 settings = get_settings()
 logger = get_logger(settings)
 db_conn_str: str = get_db_connection(settings, logger)
-messages_history: Dict[str, MessagesList] = {}
 
-
-def save_chat_history(uuid: str):
-    if uuid not in messages_history:
-        messages_history[uuid] = MessagesList()
-
-    chat_history_path = settings.get("CHAT_HISTORY_PATH", "chat_histories")
-    if not os.path.exists(chat_history_path):
-        os.makedirs(chat_history_path)
-
-    chat_history_file = os.path.join(chat_history_path, f"{uuid}_chat_history.json")
-
-    try:
-        with open(chat_history_file, "w") as f:
-            json.dump([{
-                "text": message.text,
-                "sender": message.sender.value
-            } for message in messages_history[uuid].messages_list], f, indent=4)
-        logger.info(f"Chat history for {uuid} saved successfully.")
-    except Exception as e:
-        logger.error(f"Failed to save chat history for {uuid}: {e}")
-
+memory_service = ChatMemoryService(settings, logger)
 
 @router.post("/send_uuid")
 async def send_uuid(data: UUIDRequest):
-    global messages_history
-    if data.uuid not in messages_history:
-        messages_history[data.uuid] = MessagesList()
-
-    welcome_message = """Welcome to ITS Retails.
-                         I’m your AI Voice Assistant, here to help you access insights quickly. 
-                         You can ask me to retrieve data from the database or perform online web searches to find relevant information for you."""
-
-    if not any(msg.text == welcome_message for msg in messages_history[data.uuid].messages_list):
-        messages_history[data.uuid].add_message(Message(sender=Sender.ASSISTANT, text=welcome_message))
-
-    return {"welcome_message": welcome_message}
-
+    welcome_msg = memory_service.initialize_chat(data.uuid)
+    return {"welcome_message": welcome_msg}
 
 @router.post("/send_message")
 async def send_message(message: FrontendSendMessage):
     logger.info(f"\n\nMessage received:\n{message.uuid}: {message.text}")
 
-    global messages_history
+    if memory_service.is_reset_request(message.text):
+        reply_text = memory_service.reset_session(message.uuid)
+        return {"response": reply_text}
 
-    if message.uuid not in messages_history:
-        messages_history[message.uuid] = MessagesList()
+    memory_service.add_message(message.uuid, Message(sender=Sender.USER, text=message.text))
 
-    messages_history[message.uuid].add_message(Message(sender=Sender.USER, text=message.text))
+    conversation_history = memory_service.get_history(message.uuid)
 
     start_time = time.time()
 
     reply = master_router_agent(
         settings=settings,
         db_conn_str=db_conn_str,
-        conversation=messages_history[message.uuid],
+        conversation=conversation_history,
         thread_id=message.uuid
     )
 
@@ -80,21 +51,18 @@ async def send_message(message: FrontendSendMessage):
         reply_text = str(reply)
 
     if "Memory has been reset successfully" in reply_text:
-        logger.info(f"♻️ Agent triggered reset. Clearing local history for {message.uuid}")
-        messages_history[message.uuid] = MessagesList()
-        messages_history[message.uuid].add_message(Message(sender=Sender.ASSISTANT, text=reply_text))
+        memory_service.reset_session(message.uuid)
     else:
-        messages_history[message.uuid].add_message(Message(sender=Sender.ASSISTANT, text=reply_text))
+        memory_service.add_message(message.uuid, Message(sender=Sender.ASSISTANT, text=reply_text))
 
     logger.info(f"Response sent:\n{reply_text}")
 
-    save_chat_history(message.uuid)
+    memory_service.save_history_to_disk(message.uuid)
 
     return {"response": reply_text}
 
 @router.post("/upload_audio")
 async def upload_audio(audio_file: UploadFile = File(...), uuid: str = Form(...)):
-
     try:
         logger.info(f"\n\nAudio Message received from: {uuid}")
 
@@ -102,10 +70,9 @@ async def upload_audio(audio_file: UploadFile = File(...), uuid: str = Form(...)
         if not os.path.exists(temp_audio_path):
             os.makedirs(temp_audio_path)
 
-        if uuid not in messages_history:
-            messages_history[uuid] = MessagesList()
+        history = memory_service.get_history(uuid)
 
-        file_number = len(messages_history[uuid].messages_list) + 1
+        file_number = len(history.messages_list) + 1
         input_audio_file_path = os.path.join(temp_audio_path, f"{uuid}_input_{file_number}.wav")
 
         with open(input_audio_file_path, "wb") as f:

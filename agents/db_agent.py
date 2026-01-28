@@ -6,12 +6,8 @@ from langchain_core.agents import AgentFinish
 from langchain.agents.output_parsers.tools import ToolAgentAction
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.agents.format_scratchpad.openai_tools import (
-    format_to_openai_tool_messages,
-)
-from langchain.agents.output_parsers.openai_tools import (
-    OpenAIToolsAgentOutputParser,
-)
+from langchain.agents.format_scratchpad.openai_tools import format_to_openai_tool_messages
+from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
 
 # Internal Imports
 from data_models.data_models import MessagesList
@@ -20,7 +16,6 @@ from agent_tools.sql import (
     execute_sql_query,
     execute_sql_query_imp
 )
-
 
 def get_tables_metadata(settings: Dynaconf):
     """Reads and returns the table metadata from the specified file."""
@@ -37,7 +32,6 @@ def sql_agent(
         logger: logging.Logger,
         db_conn_str: str,
         conversation: MessagesList,
-        thread_id: str
 ) -> str:
     """
     Pure SQL agent. No routing, no web search.
@@ -62,24 +56,19 @@ def sql_agent(
             logger.error("db_system_prompt.xml not found.")
             return "System configuration error: Prompt file missing."
 
-        # --- FIX STARTS HERE ---
-        # 1. Define the template string with placeholders (do not f-string the conversation here)
-        user_template = "Session ID: {thread_id}\nConversation:\n{conversation}"
+        user_template = "Conversation: {conversation}"
 
         agent_prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
             ("user", user_template), # LangChain safely injects vars here
             MessagesPlaceholder(variable_name="agent_scratchpad")
         ])
-        # --- FIX ENDS HERE ---
 
         llm_with_tools = llm.bind_tools(tools)
 
         agent = (
                 {
-                    # 2. Convert conversation to string specifically for the prompt injection
                     "conversation": lambda x: str(x["conversation"]),
-                    "thread_id": lambda x: x["thread_id"],
                     "metadata": lambda x: x["metadata"],
                     "agent_scratchpad": lambda x: format_to_openai_tool_messages(x["intermediate_steps"]),
                 }
@@ -90,7 +79,6 @@ def sql_agent(
 
         prompt_input = {
             "conversation": conversation,
-            "thread_id": thread_id,
             "metadata": metadata,
             "intermediate_steps": []
         }
@@ -109,9 +97,6 @@ def sql_agent(
 
                 if tool_name == "execute_sql_query":
                     safe_input = tool_input.copy() if isinstance(tool_input, dict) else {}
-
-                    safe_input.pop("thread_id", None)
-                    safe_input.pop("metadata", None)
 
                     if "query" not in safe_input:
                         safe_input["query"] = normalized_user_message

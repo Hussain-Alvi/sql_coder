@@ -24,8 +24,6 @@ def execute_sql_query(query: str, limit: int = 5) -> str:
     Executes an SQL query on the relational database and returns the results.
     The results are returned in a structured JSON format including column names and row values.
     """
-    # This is the tool's interface definition for the agent.
-    # The actual implementation is in the function below.
     pass
 
 
@@ -39,9 +37,9 @@ def execute_sql_query_imp(settings: Dynaconf, logger: logging.Logger,
     """
     try:
         if limit is None:
-            limit = 20  # default cap if not provided
+            limit = 20
         else:
-            limit = min(limit, 20)  # hard cap at 20 rows
+            limit = min(limit, 20)
         if limit is not None and query.startswith('"') and query.endswith('"'):
             query = query[1:-1]
 
@@ -50,7 +48,6 @@ def execute_sql_query_imp(settings: Dynaconf, logger: logging.Logger,
 
         cursor.execute(query)
 
-        # If query has no result set (like DDL/DML), just return success message
         if cursor.description is None:
             return {
                 "status": "success",
@@ -59,20 +56,16 @@ def execute_sql_query_imp(settings: Dynaconf, logger: logging.Logger,
                 "data": []
             }
 
-        # Extract column names
         columns = [col[0] for col in cursor.description]
 
-        # Fetch rows
         rows = cursor.fetchall()
         total_rows = len(rows)
 
-        # Clip rows if needed
         clipped = False
         if total_rows > limit:
             rows = rows[:limit]
             clipped = True
 
-        # Convert rows into list of dicts
         data = [dict(zip(columns, row)) for row in rows]
 
         result = {

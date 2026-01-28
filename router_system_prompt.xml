@@ -24,7 +24,7 @@
 
         <tool name="web_search">
             <description>
-                Access live internet information via Groq's compound search model. Use for:
+                Access live internet information. Use for:
                 - Current time, dates, weather in any location
                 - Public news, current events, market trends
                 - General world knowledge not specific to this company

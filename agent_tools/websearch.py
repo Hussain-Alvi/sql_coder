@@ -4,8 +4,6 @@ from langchain.tools import tool
 from pydantic import BaseModel, Field
 from groq import Groq
 
-logger = logging.getLogger("tools")
-
 class WebSearchInput(BaseModel):
     query: str = Field(description="Search query for real-time web information")
     max_results: Optional[int] = Field(default=3, description="Max results (1-5)")
@@ -46,7 +44,7 @@ def web_search_tool(query: str) -> Dict[str, Any]:
                     "content": f"Search the web: {query}"
                 }
             ],
-            max_tokens=200
+            max_tokens=2000
         )
         
         result_text = response.choices[0].message.content
@@ -80,11 +78,9 @@ def web_search_tool(query: str) -> Dict[str, Any]:
         }
         
     except Exception as e:
-        logger.error(f"Groq compound search error: {e}")
         return {
             "status": "error",
             "message": f"Web search failed: {str(e)}",
             "results": []
         }
         
-logger = logging.getLogger(__name__)
