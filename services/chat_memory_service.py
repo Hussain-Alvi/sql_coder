@@ -88,7 +88,7 @@ class ChatMemoryService:
 
         self.delete_history_file(uuid)
 
-        reply_text = "Memory has been reset successfully."
+        reply_text = "Memory has been reset successfully." + " memory-reset"
         self.add_message(uuid, Message(sender=Sender.ASSISTANT, text=reply_text))
 
         self.save_history_to_disk(uuid)

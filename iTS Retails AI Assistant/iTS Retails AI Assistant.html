@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>iTS Retails Assistant</title>
+</head>
+<body>
+<div class="chat-container">
+    <div class="chat-header">
+        <h1>iTS Retails Assistant</h1>
+        <button id="theme-toggle" class="theme-btn">🌙</button>
+    </div>
+    <div class="chat-box" id="chat-box"></div>
+    <div class="input-container">
+        <textarea id="message-input" placeholder="Type your message..." rows="1"></textarea>
+        <button id="send-button">Send</button>
+    </div>
+</div>
+
+<script>
+    const BASE_URL = "http://localhost:5011";
+    //const BASE_URL = "https://rm2pgoapi.appinsnap.com:4433";
+    // const BASE_URL = "http://192.168.0.60/5011";
+
+    const chatBox = document.getElementById("chat-box");
+    const messageInput = document.getElementById("message-input");
+    const sendButton = document.getElementById("send-button");
+    const themeToggle = document.getElementById("theme-toggle");
+
+    const uuid = generateUUID();
+
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    // --- Event Listeners ---
+
+    sendButton.addEventListener("click", sendMessage);
+
+    // Enter key to send (Shift+Enter for new line)
+    messageInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Toggle Theme Button
+    themeToggle.addEventListener("click", () => {
+        document.body.classList.toggle("dark-mode");
+
+        // Change Icon based on mode
+        if (document.body.classList.contains("dark-mode")) {
+            themeToggle.textContent = "☀️"; // Sun icon for light mode switch
+        } else {
+            themeToggle.textContent = "🌙"; // Moon icon for dark mode switch
+        }
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        fetch(`${BASE_URL}/send_uuid`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uuid: uuid })
+        })
+        .then(response => response.json())
+        .then(data => {
+            addMessage(data.welcome_message, "bot");
+        })
+        .catch(error => {
+            console.error('Error sending UUID:', error);
+        });
+    });
+
+    function sendMessage() {
+        const userMessage = messageInput.value;
+        if (userMessage.trim() === "") return;
+
+        addMessage(userMessage, "user");
+        messageInput.value = "";
+
+        fetch(`${BASE_URL}/send_message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({text: userMessage, uuid: uuid})
+        })
+        .then(response => response.json())
+        .then(data => {
+            addMessage(data.response, "bot");
+        })
+        .catch(error => {
+            console.error('Error sending message:', error);
+        });
+    }
+
+    function addMessage(message, type) {
+        const messageElement = document.createElement("div");
+        messageElement.classList.add("message", type);
+        messageElement.innerText = `${message}`;
+        chatBox.appendChild(messageElement);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+</script>
+</body>
+</html>

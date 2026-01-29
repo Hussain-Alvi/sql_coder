@@ -53,6 +53,6 @@ def get_router_tools(
         """
         logger.info("🔄 Routing to Memory Manager")
         thread_memory_manager.invoke({"thread_id": thread_id, "action": "reset"})
-        return "Memory has been reset successfully."
+        return "Memory has been reset successfully." + " memory-reset"
 
     return [call_sql_agent, call_web_search, call_memory_reset]

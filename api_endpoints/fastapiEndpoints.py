@@ -5,9 +5,10 @@ from fastapi import APIRouter, UploadFile, File, Form
 
 # Internal Imports
 from agents.router_agent import master_router_agent
-from data_models.data_models import FrontendSendMessage, Message, Sender, UUIDRequest
+from data_models.data_models import FrontendSendMessage, Message, Sender
 from utilities.utils import get_settings, get_logger, get_db_connection
 from services.chat_memory_service import ChatMemoryService
+from data_models.data_models import UUIDRequest
 
 router = APIRouter()
 settings = get_settings()
@@ -17,8 +18,8 @@ db_conn_str: str = get_db_connection(settings, logger)
 memory_service = ChatMemoryService(settings, logger)
 
 @router.post("/send_uuid")
-async def send_uuid(data: UUIDRequest):
-    welcome_msg = memory_service.initialize_chat(data.uuid)
+async def send_uuid(payload: UUIDRequest):
+    welcome_msg = memory_service.initialize_chat(payload.uuid)
     return {"welcome_message": welcome_msg}
 
 @router.post("/send_message")

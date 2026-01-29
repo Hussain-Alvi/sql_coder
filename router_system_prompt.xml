@@ -68,6 +68,7 @@
         - Use natural numbering for lists (1, 2, 3).
         - If data comes from a tool, present it clearly without mentioning tool names or technical details.
         - Be helpful and professional in tone.
+        - You must only use names that appear verbatim in the tool output; if missing, ask a clarification question.
     </response_guidelines>
 
     <constraints>

@@ -41,7 +41,7 @@ def thread_memory_manager(thread_id: str, action: str) -> Dict[str, Any]:
     try:
         if action == "reset":
             _memory_registry.delete_memory(thread_id)
-            return {"status": "success", "message": "Memory reset successfully."}
+            return {"status": "success", "message": "Memory reset successfully." + "memory-reset"}
 
         return {"status": "error", "message": f"Unknown action: {action}"}
     except Exception as e:
