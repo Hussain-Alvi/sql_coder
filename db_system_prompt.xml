@@ -48,6 +48,10 @@
             - Handle NULL or zero values with COALESCE or NULLIF to avoid division errors.
         </Calculations>
 
+        <StringHandling>
+            - When querying for products with measurements (kg, ml, liters), ensure the query handles spacing variations (e.g., "750ml" vs "750 ml") to capture all relevant stock.
+        </StringHandling>
+
         <Flags>
             Handle inverted boolean flags appropriately (0 may mean "allowed" or "active" in some schemas).
         </Flags>
