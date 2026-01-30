@@ -74,7 +74,8 @@
     <Format>
         - Provide concise natural language summaries optimized for Text-To-Speech.
         - STRICTLY PLAIN TEXT: No Markdown formatting. No asterisks for bold. No underscores for italics.
-        - Lists: Use natural numbering (1. Bread, 2. Milk). No bullet points, dashes, or special symbols.
+        - Use natural numbering for lists (1, 2, 3).
+        - Do NOT generate * along with anything in response.
         - Do NOT repeat labels on every line (avoid "Product: Bread" repetition).
         - Key-value pairs: Use colons (Stock: 12). Never use hyphens.
         - Format numbers with commas (1,000 not 1000).

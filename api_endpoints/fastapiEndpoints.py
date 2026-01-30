@@ -7,7 +7,7 @@ from fastapi import APIRouter, UploadFile, File, Form
 from agents.router_agent import master_router_agent
 from data_models.data_models import FrontendSendMessage, Message, Sender
 from utilities.utils import get_settings, get_logger, get_db_connection
-from services.chat_memory_service import ChatMemoryService
+import agent_tools.memory as memory_module
 from data_models.data_models import UUIDRequest
 
 router = APIRouter()
@@ -15,7 +15,8 @@ settings = get_settings()
 logger = get_logger(settings)
 db_conn_str: str = get_db_connection(settings, logger)
 
-memory_service = ChatMemoryService(settings, logger)
+memory_service = memory_module.make_memory_service(settings, logger)
+memory_module._memory_registry = memory_service
 
 @router.post("/send_uuid")
 async def send_uuid(payload: UUIDRequest):
@@ -25,7 +26,6 @@ async def send_uuid(payload: UUIDRequest):
 @router.post("/send_message")
 async def send_message(message: FrontendSendMessage):
     logger.info(f"\n\nMessage received:\n{message.uuid}: {message.text}")
-
 
     memory_service.add_message(message.uuid, Message(sender=Sender.USER, text=message.text))
 
@@ -48,9 +48,6 @@ async def send_message(message: FrontendSendMessage):
     else:
         reply_text = str(reply)
 
-    if "Memory has been reset successfully" in reply_text:
-        memory_service.reset_session(message.uuid)
-    else:
         memory_service.add_message(message.uuid, Message(sender=Sender.ASSISTANT, text=reply_text))
 
     logger.info(f"Response sent:\n{reply_text}")
