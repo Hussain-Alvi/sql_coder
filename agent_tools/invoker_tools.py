@@ -20,7 +20,7 @@ def get_router_tools(
     Factory function to create and return tools with necessary context injected.
     """
 
-    @tool("ask_database")
+    @tool("ask_database", return_direct=True)
     def call_sql_agent(query: str) -> str:
         """
         Use this tool for questions about internal data, users, metrics,

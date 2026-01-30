@@ -26,9 +26,6 @@ async def send_uuid(payload: UUIDRequest):
 async def send_message(message: FrontendSendMessage):
     logger.info(f"\n\nMessage received:\n{message.uuid}: {message.text}")
 
-    if memory_service.is_reset_request(message.text):
-        reply_text = memory_service.reset_session(message.uuid)
-        return {"response": reply_text}
 
     memory_service.add_message(message.uuid, Message(sender=Sender.USER, text=message.text))
 
@@ -57,8 +54,6 @@ async def send_message(message: FrontendSendMessage):
         memory_service.add_message(message.uuid, Message(sender=Sender.ASSISTANT, text=reply_text))
 
     logger.info(f"Response sent:\n{reply_text}")
-
-    memory_service.save_history_to_disk(message.uuid)
 
     return {"response": reply_text}
 

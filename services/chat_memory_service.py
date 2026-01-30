@@ -67,30 +67,15 @@ class ChatMemoryService:
         except Exception as e:
             self.logger.error(f"Failed to delete chat history for {uuid}: {e}")
 
-    def is_reset_request(self, text: str) -> bool:
-        """Analyzes text to see if the user wants to reset memory."""
-        t = (text or "").strip().lower()
-        phrases = {
-            "reset", "reset chat", "reset memory", "clear memory", "clear chat",
-            "forget", "forget everything", "start over", "start fresh", "wipe memory"
-        }
-        if t in phrases:
-            return True
-        return any(p in t for p in ["reset memory", "clear memory", "forget", "start over", "start fresh", "wipe"])
-
     def reset_session(self, uuid: str) -> str:
         """Performs the full reset: clears agent memory, clears RAM, deletes file."""
         self.logger.info(f"♻️ Reset requested. Clearing all state for {uuid}")
 
         thread_memory_manager.invoke({"thread_id": uuid, "action": "reset"})
 
-        self.messages_history[uuid] = MessagesList()
-
         self.delete_history_file(uuid)
 
         reply_text = "Memory has been reset successfully." + " memory-reset"
         self.add_message(uuid, Message(sender=Sender.ASSISTANT, text=reply_text))
-
-        self.save_history_to_disk(uuid)
 
         return reply_text
